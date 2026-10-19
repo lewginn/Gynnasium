@@ -41,6 +41,10 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - The app sends the chat plus a text context (plan with refs d1/x1, recent training, units). Claude replies with a message and either `newPlan` or `changes`; `src/lib/coach.ts` checks them against the library and the plan, and the page previews them. Nothing is written until Apply (`applyPlanChanges` / `createPlanFromProposal`).
 - Instructions and the exercise catalogue form one cached system block: keep anything that varies per request out of it.
 
+## Friends (src/social/friends.ts, supabase/migrations/20261022090000_friends.sql)
+- Online-only, straight to Supabase (nothing in Dexie). Friendships are by email; accepting goes through `accept_friend()`.
+- Nobody gets RLS read access to another user's tables. Friends' data only comes out of the security-definer functions (`friend_list`, `friend_feed`) as a summary, so sync can never pull a friend's rows. Keep it that way.
+
 ## Charts (src/components/charts/)
 - Plain SVG, no chart library. 2px lines, ringed end-dot labelled with the latest value, 1px recessive grid, crosshair + tooltip on touch/hover/arrow keys, legend only for 2+ series, a "Show as table" view.
 - Colours are `--chart-primary` / `--chart-muted` / `--chart-grid`, validated for colour-blind separation and contrast in both themes. `--chart-muted` is de-emphasis only (always with a legend).

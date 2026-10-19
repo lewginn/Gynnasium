@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Trophy } from 'lucide-react'
+import { ChevronRight, Trophy, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import BodyCard from '../components/BodyCard'
 import ColumnChart from '../components/charts/ColumnChart'
@@ -27,6 +27,13 @@ export default function ProgressPage() {
       </header>
 
       <BodyCard />
+
+      <Link to="/friends" className="card list-row-split friends-link">
+        <span className="row">
+          <Users size={20} aria-hidden /> Friends
+        </span>
+        <ChevronRight size={20} aria-hidden className="muted" />
+      </Link>
 
       {!hasWorkouts && sessions && (
         <section className="card empty">

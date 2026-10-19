@@ -12,7 +12,7 @@ It's a web app you can install to your home screen, and it works offline.
 | 1.5 | Bodyweight & timed exercises, reorder mid-workout, edit past workouts | ✅ |
 | 2 | Login (email link), sync & backup, body metrics, progress charts | ✅ |
 | 3 | AI plan builder and chat (Claude) | ✅ |
-| 4 | Progressive overload, Garmin FIT export, native app wrapper | Next |
+| 4 | Progressive overload, alternating weeks, Garmin FIT export, iPhone app (Capacitor), friends | ✅ |
 
 ## Development
 

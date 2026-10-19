@@ -55,8 +55,12 @@ export default function WorkoutPage() {
   const restFor = (exercise: Exercise) => plan?.restByExercise.get(exercise.id) ?? exercise.defaultRestSec ?? settings.defaultRestSec
 
   const finish = async () => {
-    const pendingSets = exercises.flatMap((e) => e.sets).filter((s) => !s.completedAt).length
-    if (doneSets === 0) {
+    // Count from the database, not this render: a set ticked a moment ago may not have re-rendered yet,
+    // and a stale count would offer to discard a workout that has sets in it.
+    const sets = ((await loadSession(session.id))?.exercises ?? []).flatMap((e) => e.sets)
+    const done = sets.filter((s) => s.completedAt).length
+    const pendingSets = sets.length - done
+    if (done === 0) {
       const ok = await confirm({ title: 'Nothing ticked off', message: 'Finishing now discards this workout.', action: 'Discard workout', destructive: true })
       if (!ok) return
     } else if (pendingSets > 0) {

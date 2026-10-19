@@ -6,6 +6,7 @@ import CoachPage from './pages/CoachPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import EditSessionPage from './pages/EditSessionPage'
 import ExercisesPage from './pages/ExercisesPage'
+import FriendsPage from './pages/FriendsPage'
 import PlanEditPage from './pages/PlanEditPage'
 import PlansPage from './pages/PlansPage'
 import ProgressPage from './pages/ProgressPage'
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/exercises" element={<ExercisesPage />} />
           <Route path="/exercises/:id" element={<ExerciseDetailPage />} />
           <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/friends" element={<FriendsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
