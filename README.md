@@ -11,8 +11,8 @@ It's a web app you can install to your home screen, and it works offline.
 | 1 | Plan builder + suggestions + templates, workout logger, rest timer, PRs, e1RM, history | ✅ |
 | 1.5 | Bodyweight & timed exercises, reorder mid-workout, edit past workouts | ✅ |
 | 2 | Login (email link), sync & backup, body metrics, progress charts | ✅ |
-| 3 | AI plan builder and chat (Claude) | Next |
-| 4 | Progressive overload, Garmin FIT export, native app wrapper | |
+| 3 | AI plan builder and chat (Claude) | ✅ |
+| 4 | Progressive overload, Garmin FIT export, native app wrapper | Next |
 
 ## Development
 
@@ -25,6 +25,15 @@ npm run lint && npm run typecheck
 ```
 
 Copy `.env.example` to `.env.local` and fill in the Supabase anon key. The app runs fine without it: everything is stored on the device until sync arrives in Phase 2.
+
+### The coach (Claude)
+
+`api/coach.ts` is a Vercel function that calls the Anthropic API, so the key stays on the server. It needs two more environment variables in Vercel (server-only: no `VITE_` prefix):
+
+- `ANTHROPIC_API_KEY`: from console.anthropic.com. Mark it Sensitive.
+- `COACH_ALLOWED_EMAILS`: comma-separated emails of accounts allowed to use the coach (it spends your API credit).
+
+`npm run dev` doesn't serve `/api`; use a Vercel preview to try the coach for real. The e2e tests mock it.
 
 ### Database
 

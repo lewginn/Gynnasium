@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, MessagesSquare, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../db/db'
@@ -75,6 +75,9 @@ export default function PlansPage() {
           <Plus size={20} aria-hidden /> New plan
         </button>
       )}
+      <Link to="/coach" className="btn btn-block">
+        <MessagesSquare size={20} aria-hidden /> Build a plan with Claude
+      </Link>
 
       <h2 className="section-title">Start from a template</h2>
       <p className="muted small">You can change anything afterwards.</p>
