@@ -2054,3 +2054,9 @@ select.input {
   width: 50px;
   padding: 0;
 }
+
+/* ---------- Garmin export */
+
+.export-help {
+  margin: 0 4px 16px;
+}
