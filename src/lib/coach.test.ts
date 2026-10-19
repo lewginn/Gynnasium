@@ -49,6 +49,7 @@ const change = (c: Partial<PlanChange> & Pick<PlanChange, 'op'>): PlanChange => 
   restSec: null,
   position: null,
   exercises: null,
+  week: null,
   reason: '',
   ...c,
 })
@@ -97,8 +98,8 @@ describe('checkNewPlan', () => {
         name: ' Strength ',
         goal: 'Get strong',
         days: [
-          { name: 'A', focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }, { exerciseId: 'Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
-          { name: 'B', focusMuscles: [], exercises: [{ exerciseId: 'Also_Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
+          { name: 'A', week: null, focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }, { exerciseId: 'Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
+          { name: 'B', week: null, focusMuscles: [], exercises: [{ exerciseId: 'Also_Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
         ],
       },
       library,
@@ -177,5 +178,28 @@ describe('describeChange', () => {
       { kind: 'edit', title: 'Barbell Squat', detail: '3 → 5 sets · 8–12 → 5 reps' },
       { kind: 'add', title: 'Plank', detail: 'Add to Core: 3 × 30–45 s, rest 1 min' },
     ])
+  })
+})
+
+describe('weeks', () => {
+  it('tags days with their week in the context, and checks week changes', () => {
+    const weekly: CoachPlan = { ...detail, days: [{ ...detail.days[0], day: { ...detail.days[0].day, week: 2 } }, detail.days[1]] }
+    expect(planText(weekly)).toContain('d1 Legs [week B] (focus: quads)')
+    const { changes } = checkChanges(
+      [
+        { ...change({ op: 'set_day_week', day: 'd2' }), week: 1 },
+        { ...change({ op: 'add_day', name: 'Arms', exercises: [] }), week: 2 },
+        { ...change({ op: 'set_day_week', day: 'd1' }), week: 7 as 1 },
+      ],
+      weekly,
+      library,
+    )
+    expect(changes).toMatchObject([
+      { op: 'set_day_week', dayId: 'day-b', week: 1 },
+      { op: 'add_day', name: 'Arms', week: 2 },
+      { op: 'set_day_week', dayId: 'day-a', week: null },
+    ])
+    expect(describeChange(changes[0], weekly)).toMatchObject({ title: 'Core', detail: 'Move to week A' })
+    expect(checkNewPlan({ name: 'P', goal: '', days: [{ name: 'A', week: 2, focusMuscles: [], exercises: [{ exerciseId: 'Plank', sets: 3, repMin: 30, repMax: 60, restSec: 60 }] }] }, library).plan.days[0].week).toBe(2)
   })
 })

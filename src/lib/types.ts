@@ -80,6 +80,8 @@ export interface PlanDay extends Synced {
   name: string
   order: number
   focusMuscles: Muscle[]
+  /** Alternating weeks: 1 = week A, 2 = week B. Unset when every week is the same. */
+  week?: 1 | 2
 }
 
 export interface PlanExercise extends Synced {

@@ -5,6 +5,7 @@ import { toDateKey, weeklyCounts, type Point } from '../lib/metrics'
 import { detectPRs } from '../lib/prs'
 import { inferFocusMuscles } from '../lib/suggest'
 import { totalVolumeKg } from '../lib/summary'
+import { dayLabel, sortDays } from '../lib/weeks'
 import type { PlanTemplate } from '../lib/templates'
 import type {
   BodyMetric,
@@ -61,15 +62,25 @@ async function deleteDayRows(dayId: string, t: number) {
   await db.planExercises.where('planDayId').equals(dayId).modify({ deletedAt: t, updatedAt: t })
 }
 
-export async function addPlanDay(planId: string, name: string): Promise<string> {
+export async function addPlanDay(planId: string, name: string, week?: PlanDay['week']): Promise<string> {
   const id = uuid()
   const order = (await db.planDays.where('planId').equals(planId).filter(alive).count())
-  await db.planDays.add({ id, planId, name, order, focusMuscles: inferFocusMuscles(name), updatedAt: now() })
+  await db.planDays.add({ id, planId, name, order, focusMuscles: inferFocusMuscles(name), ...(week ? { week } : {}), updatedAt: now() })
   return id
 }
 
-export async function updatePlanDay(id: string, patch: Partial<Pick<PlanDay, 'name' | 'focusMuscles'>>) {
+export async function updatePlanDay(id: string, patch: Partial<Pick<PlanDay, 'name' | 'focusMuscles' | 'week'>>) {
   await db.planDays.update(id, { ...patch, updatedAt: now() })
+}
+
+/** Turns alternating weeks on (every day starts in week A) or off (days run every week again). */
+export async function setAlternatingWeeks(planId: string, on: boolean) {
+  await db.transaction('rw', db.planDays, async () => {
+    const t = now()
+    for (const day of await db.planDays.where('planId').equals(planId).filter(alive).toArray())
+      // Dexie removes a field updated to undefined; sync sends it as null.
+      if (on ? !day.week : day.week) await db.planDays.update(day.id, { week: on ? 1 : undefined, updatedAt: t })
+  })
 }
 
 export async function deletePlanDay(id: string) {
@@ -166,7 +177,7 @@ export interface PlanDetail {
 export async function loadPlan(planId: string): Promise<PlanDetail | null> {
   const plan = await db.plans.get(planId)
   if (!alive(plan)) return null
-  const days = (await db.planDays.where('planId').equals(planId).filter(alive).toArray()).sort(byOrder)
+  const days = sortDays(await db.planDays.where('planId').equals(planId).filter(alive).toArray())
   const pes = await db.planExercises.where('planDayId').anyOf(days.map((d) => d.id)).filter(alive).toArray()
   const exercises = await loadExercises(pes.map((p) => p.exerciseId))
   return {
@@ -256,7 +267,7 @@ export async function startSession(planDayId?: string): Promise<string> {
   }
 
   await db.transaction('rw', db.sessions, db.sessionExercises, db.setLogs, async () => {
-    await db.sessions.add({ id: sessionId, planDayId: day?.id, name: day?.name ?? 'Workout', startedAt: now(), updatedAt: now() })
+    await db.sessions.add({ id: sessionId, planDayId: day?.id, name: day ? dayLabel(day) : 'Workout', startedAt: now(), updatedAt: now() })
     await db.sessionExercises.bulkAdd(sessionExercises)
     await db.setLogs.bulkAdd(sets)
   })
@@ -706,7 +717,7 @@ export async function createPlanFromProposal(proposal: ProposedPlan): Promise<st
     await db.plans.add({ id: planId, name: proposal.name, goal: proposal.goal || undefined, isActive: !hasActive, createdBy: 'ai', updatedAt: t })
     for (const [dayOrder, day] of proposal.days.entries()) {
       const dayId = uuid()
-      await db.planDays.add({ id: dayId, planId, name: day.name, order: dayOrder, focusMuscles: day.focusMuscles, updatedAt: t })
+      await db.planDays.add({ id: dayId, planId, name: day.name, order: dayOrder, focusMuscles: day.focusMuscles, ...(day.week ? { week: day.week } : {}), updatedAt: t })
       await db.planExercises.bulkAdd(
         day.exercises
           .filter((e) => library.has(e.exerciseId))
@@ -791,7 +802,15 @@ export async function applyPlanChanges(planId: string, changes: ResolvedChange[]
           const dayId = uuid()
           const order = await db.planDays.where('planId').equals(planId).filter(alive).count()
           const muscles = [...new Set(c.exercises.flatMap((e) => e.exercise.primaryMuscles))]
-          await db.planDays.add({ id: dayId, planId, name: c.name, order, focusMuscles: muscles.length ? muscles : inferFocusMuscles(c.name), updatedAt: t })
+          await db.planDays.add({
+            id: dayId,
+            planId,
+            name: c.name,
+            order,
+            focusMuscles: muscles.length ? muscles : inferFocusMuscles(c.name),
+            ...(c.week ? { week: c.week } : {}),
+            updatedAt: t,
+          })
           await db.planExercises.bulkAdd(c.exercises.map((e, i) => newPlanExercise(dayId, e.exercise.id, i, e.target, t)))
           break
         }
@@ -804,6 +823,9 @@ export async function applyPlanChanges(planId: string, changes: ResolvedChange[]
         }
         case 'rename_day':
           if (alive(await db.planDays.get(c.dayId))) await db.planDays.update(c.dayId, { name: c.name, updatedAt: t })
+          break
+        case 'set_day_week':
+          if (alive(await db.planDays.get(c.dayId))) await db.planDays.update(c.dayId, { week: c.week ?? undefined, updatedAt: t })
           break
         case 'rename_plan':
           await db.plans.update(planId, { name: c.name, updatedAt: t })

@@ -5,7 +5,7 @@ export type Row = Record<string, unknown>
 /** Synced tables in dependency order: parents before children, so foreign keys hold when pushing. */
 export const SYNCED_TABLES = [
   { local: 'plans', remote: 'plans', columns: ['id', 'name', 'goal', 'is_active', 'created_by'] },
-  { local: 'planDays', remote: 'plan_days', columns: ['id', 'plan_id', 'name', 'order', 'focus_muscles'] },
+  { local: 'planDays', remote: 'plan_days', columns: ['id', 'plan_id', 'name', 'order', 'focus_muscles', 'week'] },
   {
     local: 'planExercises',
     remote: 'plan_exercises',

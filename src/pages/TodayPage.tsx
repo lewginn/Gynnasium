@@ -24,6 +24,7 @@ import { bestSet, formatSet } from '../lib/summary'
 import type { SetLog } from '../lib/types'
 import { toDisplay } from '../lib/units'
 import { startOfWeek, weekStreak, weekSummary } from '../lib/week'
+import { dayLabel, daysPerWeek, nextDay, weekLetter } from '../lib/weeks'
 import { useNow } from '../state/restTimer'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -59,9 +60,8 @@ export default function TodayPage() {
 
   // Suggest the day after the one you did last.
   const lastDayId = recent?.find((s) => s.planDayId && plan?.days.some((d) => d.day.id === s.planDayId))?.planDayId
-  const lastIndex = plan?.days.findIndex((d) => d.day.id === lastDayId) ?? -1
-  const next = plan && plan.days.length > 0 ? plan.days[(lastIndex + 1) % plan.days.length] : null
-  const otherDays = plan?.days.filter((d) => d !== next) ?? []
+  const next = plan ? nextDay(plan.days.map((d) => ({ ...d, id: d.day.id })), lastDayId) : null
+  const otherDays = plan?.days.filter((d) => d.day.id !== next?.day.id) ?? []
 
   // Last time's best set for each exercise in the next day, so you know what you're aiming for.
   const nextExerciseIds = next?.exercises.map((e) => e.exercise.id).join() ?? ''
@@ -118,7 +118,10 @@ export default function TodayPage() {
 
           {!active && next && (
             <section className="card hero" aria-label="Up next">
-              <span className="eyebrow">Up next in {plan!.plan.name}</span>
+              <span className="eyebrow">
+                Up next in {plan!.plan.name}
+                {next.day.week && ` · Week ${weekLetter(next.day.week)}`}
+              </span>
               <h2 className="hero-title">{next.day.name}</h2>
               {next.exercises.length > 0 ? (
                 <ol className="hero-list">
@@ -178,7 +181,7 @@ export default function TodayPage() {
             <WeekCard
               starts={week.starts}
               now={now}
-              goal={plan?.days.length ?? 0}
+              goal={plan ? daysPerWeek(plan.days.map((d) => d.day)) : 0}
               volume={toDisplay(week.volumeKg, settings.units)}
               units={settings.units}
             />
@@ -202,13 +205,14 @@ export default function TodayPage() {
               <ul className="day-list">
                 {otherDays.map(({ day, exercises }) => (
                   <li key={day.id} className="day-row">
-                    <button className="day-button" onClick={() => setPreviewDayId(day.id)} aria-label={`${day.name}: view exercises`}>
+                    <button className="day-button" onClick={() => setPreviewDayId(day.id)} aria-label={`${dayLabel(day)}: view exercises`}>
                       <span className="list-title">{day.name}</span>
                       <span className="list-meta">
+                        {day.week && `Week ${weekLetter(day.week)} · `}
                         {exercises.length === 0 ? 'No exercises yet' : `${exercises.length} exercises`}
                       </span>
                     </button>
-                    <button className="day-start" onClick={() => start(day.id)} disabled={exercises.length === 0} aria-label={`Start ${day.name}`}>
+                    <button className="day-start" onClick={() => start(day.id)} disabled={exercises.length === 0} aria-label={`Start ${dayLabel(day)}`}>
                       <Play size={20} aria-hidden />
                     </button>
                   </li>

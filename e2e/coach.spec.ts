@@ -34,6 +34,7 @@ const change = (c: Partial<PlanChange> & Pick<PlanChange, 'op'>): PlanChange => 
   restSec: null,
   position: null,
   exercises: null,
+  week: null,
   reason: '',
   ...c,
 })
@@ -49,6 +50,7 @@ test('build a plan with Claude: preview, then create', async ({ page }) => {
         days: [
           {
             name: 'Day A',
+            week: null,
             focusMuscles: ['quads', 'chest', 'lats'],
             exercises: [
               { exerciseId: 'Barbell_Squat', sets: 4, repMin: 6, repMax: 8, restSec: 180 },
@@ -56,7 +58,7 @@ test('build a plan with Claude: preview, then create', async ({ page }) => {
               { exerciseId: 'Not_A_Real_Exercise', sets: 3, repMin: 8, repMax: 12, restSec: 90 },
             ],
           },
-          { name: 'Day B', focusMuscles: ['hamstrings'], exercises: [{ exerciseId: 'Romanian_Deadlift', sets: 3, repMin: 8, repMax: 10, restSec: 150 }] },
+          { name: 'Day B', week: null, focusMuscles: ['hamstrings'], exercises: [{ exerciseId: 'Romanian_Deadlift', sets: 3, repMin: 8, repMax: 10, restSec: 150 }] },
         ],
       },
     },

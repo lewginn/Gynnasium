@@ -16,6 +16,7 @@ import {
   loadPlan,
   movePlanExercise,
   setActivePlan,
+  setAlternatingWeeks,
   startSession,
   updatePlan,
   updatePlanDay,
@@ -25,7 +26,8 @@ import {
 import { formatRest, formatTarget } from '../lib/format'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { KEY_MUSCLES, suggestExercises, weeklySetsByMuscle } from '../lib/suggest'
-import type { Exercise, Muscle, PlanExercise } from '../lib/types'
+import type { Exercise, Muscle, PlanDay, PlanExercise } from '../lib/types'
+import { alternates, dayLabel, weekLetter } from '../lib/weeks'
 import { useConfirm } from '../state/confirm'
 
 const REST_OPTIONS = [30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
@@ -39,6 +41,7 @@ export default function PlanEditPage() {
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<'plan' | 'day' | 'newDay' | null>(null)
   const [picking, setPicking] = useState(false)
+  const [newDayWeek, setNewDayWeek] = useState<PlanDay['week']>(undefined)
 
   if (detail === undefined) return <p className="muted">Loading…</p>
   if (detail === null)
@@ -50,6 +53,7 @@ export default function PlanEditPage() {
     )
 
   const { plan, days } = detail
+  const alternating = alternates(days.map((d) => d.day))
   const selected = days.find((d) => d.day.id === selectedDayId) ?? days[0]
 
   const startDay = async (dayId: string) => {
@@ -84,21 +88,36 @@ export default function PlanEditPage() {
         </div>
       </header>
 
-      <div className="chips day-tabs" role="group" aria-label="Days">
-        {days.map(({ day }) => (
-          <button
-            key={day.id}
-            className="chip"
-            aria-pressed={day.id === selected?.day.id}
-            onClick={() => setSelectedDayId(day.id)}
-          >
-            {day.name}
-          </button>
-        ))}
-        <button className="chip chip-add" onClick={() => setRenaming('newDay')}>
-          <Plus size={16} aria-hidden /> Add day
-        </button>
-      </div>
+      {(alternating ? ([1, 2] as const) : [undefined]).map((week) => (
+        <div key={week ?? 0} className="day-tabs-group">
+          {week && <h2 className="section-label day-tabs-label">Week {weekLetter(week)}</h2>}
+          <div className="chips day-tabs" role="group" aria-label={week ? `Week ${weekLetter(week)} days` : 'Days'}>
+            {days
+              .filter(({ day }) => !week || (day.week ?? 1) === week)
+              .map(({ day }) => (
+                <button
+                  key={day.id}
+                  className="chip"
+                  aria-pressed={day.id === selected?.day.id}
+                  aria-label={week ? dayLabel(day) : undefined}
+                  onClick={() => setSelectedDayId(day.id)}
+                >
+                  {day.name}
+                </button>
+              ))}
+            <button
+              className="chip chip-add"
+              aria-label={week ? `Add day to week ${weekLetter(week)}` : undefined}
+              onClick={() => {
+                setNewDayWeek(week)
+                setRenaming('newDay')
+              }}
+            >
+              <Plus size={16} aria-hidden /> Add day
+            </button>
+          </div>
+        </div>
+      ))}
 
       {selected ? (
         <DayEditor
@@ -120,6 +139,16 @@ export default function PlanEditPage() {
       )}
 
       {days.some((d) => d.exercises.length > 0) && <WeeklyVolume days={days} />}
+
+      <section className="card">
+        <label className="toggle">
+          <span>
+            Alternate weeks
+            <span className="muted small block">Week A and week B have different days. Up next runs through week A, then week B.</span>
+          </span>
+          <input type="checkbox" checked={alternating} onChange={(e) => setAlternatingWeeks(plan.id, e.target.checked)} />
+        </label>
+      </section>
 
       <button
         className="btn btn-danger-text btn-block"
@@ -153,7 +182,7 @@ export default function PlanEditPage() {
           onSave={async (name) => {
             if (renaming === 'plan') await updatePlan(plan.id, { name })
             else if (renaming === 'day' && selected) await updatePlanDay(selected.day.id, { name })
-            else setSelectedDayId(await addPlanDay(plan.id, name))
+            else setSelectedDayId(await addPlanDay(plan.id, name, alternating ? (newDayWeek ?? 1) : undefined))
           }}
         />
       )}
@@ -191,6 +220,16 @@ function DayEditor({
           <Pencil size={16} />
         </button>
       </div>
+
+      {day.week && (
+        <div className="segmented day-week" role="radiogroup" aria-label="Week">
+          {([1, 2] as const).map((w) => (
+            <button key={w} role="radio" aria-checked={day.week === w} onClick={() => updatePlanDay(day.id, { week: w })}>
+              Week {weekLetter(w)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <button className="focus-line" onClick={() => setEditingFocus(true)}>
         {day.focusMuscles.length > 0 ? (
@@ -345,13 +384,19 @@ function PlanExerciseRow({
 }
 
 function WeeklyVolume({ days }: { days: PlanDetail['days'] }) {
-  const totals = weeklySetsByMuscle(days.flatMap((d) => d.exercises.map((x) => ({ exercise: x.exercise, sets: x.pe.targetSets }))))
+  // With alternating weeks, a week A or B day comes round every other week: count it as half.
+  const totals = weeklySetsByMuscle(
+    days.flatMap((d) => d.exercises.map((x) => ({ exercise: x.exercise, sets: d.day.week ? x.pe.targetSets / 2 : x.pe.targetSets }))),
+  )
+  const alternating = alternates(days.map((d) => d.day))
   const max = Math.max(20, ...totals.values())
   const missing = KEY_MUSCLES.filter((m) => !totals.get(m))
   return (
     <section className="card" aria-label="Weekly sets per muscle">
       <h2>Weekly sets per muscle</h2>
-      <p className="muted small">Doing each day once a week. 10 or more hard sets per muscle (green) is a typical target.</p>
+      <p className="muted small">
+        {alternating ? 'Averaged over weeks A and B.' : 'Doing each day once a week.'} 10 or more hard sets per muscle (green) is a typical target.
+      </p>
       <ul className="volume-bars">
         {KEY_MUSCLES.map((m) => {
           const sets = totals.get(m) ?? 0
@@ -361,7 +406,7 @@ function WeeklyVolume({ days }: { days: PlanDetail['days'] }) {
               <span className="volume-track">
                 <span className={`volume-fill ${sets >= 10 ? 'good' : sets > 0 ? 'low' : ''}`} style={{ width: `${(sets / max) * 100}%` }} />
               </span>
-              <span className="volume-value">{sets}</span>
+              <span className="volume-value">{Number(sets.toFixed(1))}</span>
             </li>
           )
         })}

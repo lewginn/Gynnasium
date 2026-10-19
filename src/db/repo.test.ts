@@ -29,6 +29,8 @@ import {
   saveSessionEdits,
   setLoggingOverride,
   setActivePlan,
+  setAlternatingWeeks,
+  updatePlanDay,
   startSession,
   swapSessionExercise,
   uncompleteSet,
@@ -299,6 +301,7 @@ describe('coach', () => {
     restSec: null,
     position: null,
     exercises: null,
+    week: null,
     reason: '',
     ...c,
   })
@@ -317,7 +320,7 @@ describe('coach', () => {
     const id = await createPlanFromProposal({
       name: 'Strength',
       goal: 'Get stronger on the big lifts',
-      days: [{ name: 'A', focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }] }],
+      days: [{ name: 'A', week: null, focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }] }],
     })
     const plan = (await loadPlan(id))!
     expect(plan.plan).toMatchObject({ name: 'Strength', goal: 'Get stronger on the big lifts', createdBy: 'ai', isActive: true })
@@ -370,5 +373,62 @@ describe('coach', () => {
     expect(summary.otherPlans).toEqual(['Other plan'])
     expect(summary.lifts[0]).toMatchObject({ weightKg: 100, reps: 5 })
     expect(summary.lifts[0].exercise.id).toBe('Barbell_Squat')
+  })
+})
+
+const change = (c: Partial<PlanChange> & Pick<PlanChange, 'op'>): PlanChange => ({
+  day: null,
+  exercise: null,
+  exerciseId: null,
+  name: null,
+  sets: null,
+  repMin: null,
+  repMax: null,
+  restSec: null,
+  position: null,
+  exercises: null,
+  week: null,
+  reason: '',
+  ...c,
+})
+
+async function apply(planId: string, changes: PlanChange[]) {
+  const detail = (await loadPlan(planId))!
+  const library = await loadExercises(changes.flatMap((c) => [c.exerciseId ?? '', ...(c.exercises ?? []).map((e) => e.exerciseId)]))
+  const checked = checkChanges(changes, detail, library)
+  expect(checked.skipped).toEqual([])
+  await applyPlanChanges(planId, checked.changes)
+  return (await loadPlan(planId))!
+}
+
+describe('alternating weeks', () => {
+  it('turning it on puts every day in week A; days sort A then B; workouts are named with their week', async () => {
+    const planId = await createPlanFromTemplate(PLAN_TEMPLATES[0]) // Push, Pull, Legs
+    await setAlternatingWeeks(planId, true)
+    let plan = (await loadPlan(planId))!
+    expect(plan.days.map((d) => d.day.week)).toEqual([1, 1, 1])
+    await updatePlanDay(plan.days[0].day.id, { week: 2 }) // Push to week B
+    await addPlanDay(planId, 'Arms', 1)
+    plan = (await loadPlan(planId))!
+    expect(plan.days.map((d) => d.day.name)).toEqual(['Pull', 'Legs', 'Arms', 'Push'])
+    const sessionId = await startSession(plan.days[3].day.id)
+    expect((await db.sessions.get(sessionId))!.name).toBe('Push · Week B')
+
+    await setAlternatingWeeks(planId, false)
+    expect((await loadPlan(planId))!.days.every((d) => d.day.week === undefined)).toBe(true)
+  })
+
+  it('the coach can create a plan with weeks, and move a day between weeks', async () => {
+    const id = await createPlanFromProposal({
+      name: 'A/B',
+      goal: '',
+      days: [
+        { name: 'Push', week: 1, focusMuscles: [], exercises: [{ exerciseId: 'Barbell_Bench_Press_-_Medium_Grip', sets: 3, repMin: 5, repMax: 8, restSec: 150 }] },
+        { name: 'Push', week: 2, focusMuscles: [], exercises: [{ exerciseId: 'Dumbbell_Bench_Press', sets: 3, repMin: 8, repMax: 12, restSec: 120 }] },
+      ],
+    })
+    expect((await loadPlan(id))!.days.map((d) => d.day.week)).toEqual([1, 2])
+    const after = await apply(id, [{ ...change({ op: 'set_day_week', day: 'd2' }), week: 1 }])
+    expect(after.days.map((d) => d.day.week)).toEqual([1, 1])
   })
 })
