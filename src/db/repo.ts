@@ -1,5 +1,6 @@
 import { detectPRs } from '../lib/prs'
 import { inferFocusMuscles } from '../lib/suggest'
+import { totalVolumeKg } from '../lib/summary'
 import type { PlanTemplate } from '../lib/templates'
 import type {
   Exercise,
@@ -604,4 +605,16 @@ export async function recentPRSets(limit = 10): Promise<{ set: SetLog; exercise:
   const top = sets.slice(0, limit)
   const exercises = await loadExercises(top.map((s) => s.exerciseId))
   return top.filter((s) => exercises.has(s.exerciseId)).map((set) => ({ set, exercise: exercises.get(set.exerciseId)! }))
+}
+
+/** Start times of every finished workout, for the week strip and streak on Today. */
+export async function finishedSessionStarts(): Promise<number[]> {
+  return (await db.sessions.filter((s) => alive(s) && !!s.endedAt).toArray()).map((s) => s.startedAt)
+}
+
+/** Weight moved since `since`, on weight × reps exercises only: bodyweight and timed sets aren't comparable. */
+export async function volumeSinceKg(since: number): Promise<number> {
+  const sets = await db.setLogs.filter((s) => alive(s) && !!s.completedAt && s.completedAt >= since).toArray()
+  const exercises = await loadExercises(sets.map((s) => s.exerciseId))
+  return totalVolumeKg(sets.filter((s) => exercises.get(s.exerciseId)?.logging === 'weight_reps'))
 }

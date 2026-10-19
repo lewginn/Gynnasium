@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAddedWeight, formatDuration, summariseSets, totalVolumeKg } from './summary'
+import { bestSet, formatAddedWeight, formatDuration, summariseSets, totalVolumeKg } from './summary'
 import type { SetLog } from './types'
 
 const set = (weightKg: number, reps: number, durationSec?: number): SetLog => ({
@@ -44,5 +44,13 @@ describe('helpers', () => {
 
   it('volume ignores negative (assisted) weight', () => {
     expect(totalVolumeKg([set(100, 5), set(-20, 10)])).toBe(500)
+  })
+})
+
+describe('bestSet', () => {
+  it('picks the heaviest, then most reps, then longest', () => {
+    expect(bestSet([set(80, 8), set(85, 5), set(85, 6), set(80, 10)])?.id).toBe('85-6-undefined')
+    expect(bestSet([set(0, 0, 30), set(0, 0, 45)])?.durationSec).toBe(45)
+    expect(bestSet([])).toBeUndefined()
   })
 })

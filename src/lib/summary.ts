@@ -59,3 +59,14 @@ export function bestE1RM(sets: SetLog[]): number | null {
   }
   return best
 }
+
+/** The set to quote as "last time": heaviest, then most reps, then longest. */
+export function bestSet(sets: SetLog[]): SetLog | undefined {
+  const key = (s: SetLog) => [s.weightKg, s.reps, s.durationSec ?? 0]
+  return sets.reduce<SetLog | undefined>((best, s) => {
+    if (!best) return s
+    const [a, b] = [key(s), key(best)]
+    const i = a.findIndex((v, j) => v !== b[j])
+    return i >= 0 && a[i] > b[i] ? s : best
+  }, undefined)
+}

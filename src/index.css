@@ -149,7 +149,11 @@ svg {
 .stepper-value input,
 .volume-value,
 .set-label,
-.hero-number {
+.hero-number,
+.hero-timer,
+.hero-last,
+.week-stats dd,
+.pr-value {
   font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
@@ -983,28 +987,33 @@ select.input {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
+/* Other days: a grouped list, each day with a start button. */
 .day-list {
-  display: grid;
-  gap: 8px;
-  margin: 8px 0 0;
+  margin: 0 0 16px;
   padding: 0;
+  overflow: hidden;
   list-style: none;
+  border-radius: var(--radius-group);
+  background: var(--cell);
 }
 .day-row {
+  position: relative;
   display: flex;
   align-items: stretch;
-  overflow: hidden;
-  border-radius: var(--radius-inner);
-  background: var(--bg);
 }
-.day-row.next {
-  box-shadow: inset 0 0 0 2px var(--tint);
+.day-row + .day-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  border-top: 0.5px solid var(--separator);
 }
 .day-button {
   flex: 1;
   min-width: 0;
   min-height: 60px;
-  padding: 12px 14px;
+  padding: 11px 16px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -1500,6 +1509,242 @@ select.input {
 .nav-item.active {
   background: var(--fill-3);
   color: var(--tint);
+}
+
+/* ---------- Today: a launchpad */
+
+.header-date {
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  color: var(--label-2);
+}
+
+/* Hero: the one thing to do next. */
+.hero {
+  display: grid;
+  gap: 4px;
+  padding: 18px 16px 16px;
+}
+.hero .btn-hero {
+  margin: 10px 0 0;
+}
+.hero-head {
+  display: grid;
+  gap: 2px;
+  margin: -6px -8px 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-inner);
+  background: transparent;
+  color: var(--label);
+  text-align: left;
+  cursor: pointer;
+}
+.hero-head:active {
+  background: var(--fill-3);
+}
+.hero-title {
+  margin: 0;
+  font-size: 28px; /* Title 1 */
+  line-height: 34px;
+  font-weight: 700;
+  letter-spacing: 0.36px;
+}
+.hero-meta {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--label-2);
+}
+.hero-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.hero-list li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 0;
+}
+.hero-list li + li::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-top: 0.5px solid var(--separator);
+}
+.hero-exercise {
+  min-width: 0;
+}
+.hero-exercise-name {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hero-last {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  font-size: 17px;
+  font-weight: 600;
+}
+.hero-last-label {
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--label-2);
+}
+.hero-list .hero-more {
+  min-height: 36px;
+}
+.btn-hero {
+  min-height: 56px;
+  font-size: 19px;
+}
+
+/* A workout in progress takes over the hero. */
+.hero-live {
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+.hero-timer {
+  font-size: 56px;
+  line-height: 62px;
+  font-weight: 700;
+}
+.hero-progress {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.hero-progress::before {
+  content: '';
+  grid-area: 1 / 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--fill-3);
+}
+.hero-progress-bar {
+  grid-area: 1 / 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--tint);
+  transition: width 0.3s;
+}
+
+/* This week */
+.week h2 {
+  margin-bottom: 14px;
+}
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+}
+.week-day {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.week-letter {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.week-day.today .week-letter {
+  color: var(--tint);
+}
+.week-dot {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--fill-3);
+}
+.week-day.today .week-dot {
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+.week-day.trained .week-dot {
+  background: var(--tint);
+  color: var(--on-tint);
+}
+.week-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--separator);
+}
+.week-stats > div {
+  min-width: 0;
+}
+.week-stats > div + div {
+  padding-left: 14px;
+  border-left: 0.5px solid var(--separator);
+}
+.week-stats dt {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--label-2);
+}
+.week-stats dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.week-stats small {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+
+/* Latest PR */
+.pr-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(160deg, var(--pr-soft), transparent 60%), var(--cell);
+}
+.pr-row:active {
+  background: var(--cell-pressed);
+}
+.pr-medal {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pr);
+  color: #000000;
+}
+.pr-value {
+  flex: none;
+  font-size: 17px;
+  font-weight: 700;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -18,6 +18,7 @@ The UI follows Apple's iOS design kit (HIG, iOS 26), even in the browser and on 
 - Glass (`.glass`) is for floating chrome only: the tab bar, the docked `WorkoutBar`, the rest timer, back buttons.
 - Tab bar glyphs are SF Symbols-style SVGs in `src/components/Icon.tsx`; content icons use lucide.
 - In a workout, the next set of the exercise you're on gets `.set-row.current`.
+- Today is a launchpad, in priority order: a hero (`.hero`: the workout in progress, else the up-next plan day with one big Start), This week (`lib/week.ts`), the latest PR while fresh, other days, recent workouts. Keep the hero and This week on the first screen.
 
 ## Conventions
 - IDs are `crypto.randomUUID()` generated on the device; library exercises use their free-exercise-db string id.
