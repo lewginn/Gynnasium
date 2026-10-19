@@ -1,9 +1,9 @@
 import { Minus, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   value: number
-  onChange: (value: number) => void
+  onChange: (value: number) => unknown
   step: number
   min?: number
   max?: number
@@ -17,13 +17,41 @@ interface Props {
 /** − value + control. Tap the number to type an exact value with the numeric keyboard. */
 export default function Stepper({ value, onChange, step, min = 0, max = 9999, label, unit, decimals, disabled }: Props) {
   const [draft, setDraft] = useState<string | null>(null)
+  // The value we've asked to save but haven't seen come back yet. Quick repeated taps build on it, so
+  // three fast taps of + always add three steps, rather than each starting from the last saved value.
+  // The ref is the source of truth for taps (it updates before React re-renders); the state drives the display.
+  const [pending, setPending] = useState<number | null>(null)
+  const pendingRef = useRef<number | null>(null)
+  const current = pending ?? value
+
+  const clearPending = () => {
+    pendingRef.current = null
+    setPending(null)
+  }
+  useEffect(() => {
+    if (pending !== null && pendingRef.current === pending && Math.abs(value - pending) < 1e-6) clearPending()
+  }, [value, pending])
+  useEffect(() => {
+    // Fallback if the saved value comes back different (e.g. rounded): show what's actually stored.
+    if (pending === null) return
+    const t = setTimeout(clearPending, 1500)
+    return () => clearTimeout(t)
+  }, [pending])
+
   const clamp = (v: number) => Math.min(max, Math.max(min, v))
-  const display = Number(value.toFixed(2)).toString()
+  const set = (v: number) => {
+    const next = clamp(Number(v.toFixed(2)))
+    pendingRef.current = next
+    setPending(next)
+    onChange(next)
+  }
+  const bump = (delta: number) => set((pendingRef.current ?? value) + delta)
+  const display = Number(current.toFixed(2)).toString()
 
   const commit = () => {
     if (draft === null) return
     const parsed = parseFloat(draft.replace(',', '.'))
-    if (!Number.isNaN(parsed)) onChange(clamp(decimals ? parsed : Math.round(parsed)))
+    if (!Number.isNaN(parsed)) set(decimals ? parsed : Math.round(parsed))
     setDraft(null)
   }
 
@@ -33,8 +61,8 @@ export default function Stepper({ value, onChange, step, min = 0, max = 9999, la
         type="button"
         className="stepper-btn"
         aria-label={`Decrease ${label}`}
-        disabled={disabled || value <= min}
-        onClick={() => onChange(clamp(Number((value - step).toFixed(2))))}
+        disabled={disabled || current <= min}
+        onClick={() => bump(-step)}
       >
         <Minus size={18} />
       </button>
@@ -59,8 +87,8 @@ export default function Stepper({ value, onChange, step, min = 0, max = 9999, la
         type="button"
         className="stepper-btn"
         aria-label={`Increase ${label}`}
-        disabled={disabled || value >= max}
-        onClick={() => onChange(clamp(Number((value + step).toFixed(2))))}
+        disabled={disabled || current >= max}
+        onClick={() => bump(step)}
       >
         <Plus size={18} />
       </button>

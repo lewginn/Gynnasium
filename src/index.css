@@ -10,6 +10,7 @@
   --accent-strong: #bef264;
   --accent-text: #11200a;
   --accent-soft: rgba(163, 230, 53, 0.14);
+  --badge-text: var(--accent);
   --gold: #facc15;
   --gold-soft: rgba(250, 204, 21, 0.14);
   --danger: #f87171;
@@ -42,9 +43,10 @@
     --accent-strong: #3f6212;
     --accent-text: #ffffff;
     --accent-soft: rgba(77, 124, 15, 0.12);
+    --badge-text: #365314;
     --gold: #b45309;
     --gold-soft: rgba(217, 119, 6, 0.12);
-    --danger: #dc2626;
+    --danger: #b91c1c;
     --warning: #b45309;
     --shadow: 0 10px 30px rgba(15, 18, 22, 0.12);
     color-scheme: light;
@@ -125,8 +127,9 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  margin: 0 0 0.25rem -4px;
-  padding: 4px;
+  min-height: 44px;
+  margin: -6px 0 0 -8px;
+  padding: 0 12px 0 4px;
   border: 0;
   background: none;
   color: var(--accent);
@@ -223,7 +226,7 @@ svg {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--badge-text);
   font-size: 0.72rem;
   font-weight: 700;
   vertical-align: middle;
@@ -626,7 +629,8 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 12px;
+  min-height: 44px;
+  margin: -8px 0 4px;
   padding: 0;
   border: 0;
   background: none;

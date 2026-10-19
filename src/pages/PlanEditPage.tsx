@@ -77,13 +77,11 @@ export default function PlanEditPage() {
         )}
       </header>
 
-      <div className="chips day-tabs" role="tablist" aria-label="Days">
+      <div className="chips day-tabs" role="group" aria-label="Days">
         {days.map(({ day }) => (
           <button
             key={day.id}
-            role="tab"
             className="chip"
-            aria-selected={day.id === selected?.day.id}
             aria-pressed={day.id === selected?.day.id}
             onClick={() => setSelectedDayId(day.id)}
           >
@@ -407,8 +405,14 @@ const FOCUS_GROUPS: [string, Muscle[]][] = [
   ['Core', ['abs', 'lower_back']],
 ]
 
-function FocusSheet({ selected, onClose, onChange }: { selected: Muscle[]; onClose: () => void; onChange: (m: Muscle[]) => void }) {
-  const toggle = (m: Muscle) => onChange(selected.includes(m) ? selected.filter((x) => x !== m) : [...selected, m])
+function FocusSheet({ selected: initial, onClose, onChange }: { selected: Muscle[]; onClose: () => void; onChange: (m: Muscle[]) => void }) {
+  // Kept locally so quick taps build on each other instead of on the last saved value.
+  const [selected, setSelected] = useState(initial)
+  const toggle = (m: Muscle) => {
+    const next = selected.includes(m) ? selected.filter((x) => x !== m) : [...selected, m]
+    setSelected(next)
+    onChange(next)
+  }
   return (
     <Sheet title="Muscles this day trains" onClose={onClose}>
       {FOCUS_GROUPS.map(([label, muscles]) => (

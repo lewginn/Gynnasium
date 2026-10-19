@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { freezeClock } from './helpers'
 
 const shot = (page: Page, name: string) => page.screenshot({ path: `test-results/screens/${name}.png` })
 
@@ -8,7 +9,7 @@ async function waitForLibrary(page: Page) {
   await expect.poll(async () => Number((await page.getByText(/^\d+ exercises$/).textContent())?.split(' ')[0])).toBeGreaterThan(500)
 }
 
-async function usePushPullLegs(page: Page) {
+async function addPushPullLegsPlan(page: Page) {
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Plans' }).tap()
   await page.getByRole('button', { name: 'Use Push / Pull / Legs template' }).tap()
   await expect(page.getByRole('heading', { level: 1, name: 'Push / Pull / Legs' })).toBeVisible()
@@ -55,7 +56,7 @@ test('build a plan by hand with suggestions', async ({ page }) => {
 test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
   await page.clock.install()
   await waitForLibrary(page)
-  await usePushPullLegs(page)
+  await addPushPullLegsPlan(page)
   await shot(page, 'plan-template')
 
   // Workout 1: set a baseline on bench.
@@ -71,6 +72,7 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
   await bench.getByRole('textbox', { name: 'Set 1 reps', exact: true }).fill('8')
   await bench.getByRole('textbox', { name: 'Set 1 reps', exact: true }).press('Enter')
   await bench.getByRole('button', { name: 'Complete set 1' }).tap()
+  await freezeClock(page)
 
   // Rest timer starts with the plan's rest time and counts down.
   const timer = page.getByRole('timer', { name: 'Rest timer' })
@@ -80,6 +82,7 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
   await shot(page, 'workout-logging')
   await page.clock.fastForward('01:31')
   await expect(page.getByText('Rest over, time for your next set')).toBeVisible()
+  await page.clock.resume() // let the rest of the app's timers run normally again
 
   // Only set 1 is ticked; finishing confirms the unticked ones get dropped.
   page.once('dialog', (d) => d.accept())
@@ -116,8 +119,8 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
 
 test('swap an exercise when the machine is taken', async ({ page }) => {
   await waitForLibrary(page)
-  await usePushPullLegs(page)
-  await page.getByRole('tab', { name: 'Legs' }).tap()
+  await addPushPullLegsPlan(page)
+  await page.getByRole('group', { name: 'Days' }).getByRole('button', { name: 'Legs', exact: true }).tap()
   await page.getByRole('button', { name: 'Start Legs' }).tap()
 
   await page.getByRole('button', { name: 'Options for Lying Leg Curls' }).tap()
@@ -187,7 +190,7 @@ test.describe('dark mode', () => {
 
   test('workout screen is readable in dark mode', async ({ page }) => {
     await waitForLibrary(page)
-    await usePushPullLegs(page)
+    await addPushPullLegsPlan(page)
     await page.getByRole('button', { name: 'Start Push' }).tap()
     const bench = page.getByRole('region', { name: 'Barbell Bench Press - Medium Grip' })
     await bench.getByRole('textbox', { name: 'Set 1 weight', exact: true }).fill('60')

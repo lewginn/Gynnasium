@@ -87,10 +87,11 @@ export default function ExerciseDetailPage() {
           className="exercise-image"
           src={IMAGE_BASE + exercise.image}
           alt=""
-          loading="lazy"
           width={320}
           height={240}
-          onError={(e) => (e.currentTarget.hidden = true)}
+          // Hidden until it arrives, so there's no empty box while loading or when offline.
+          hidden
+          onLoad={(e) => (e.currentTarget.hidden = false)}
         />
       )}
       <dl className="card details">

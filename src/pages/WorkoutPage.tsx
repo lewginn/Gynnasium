@@ -193,15 +193,14 @@ function ExerciseCard({
         {last && last.length > 0 ? <>Last time: {summariseSets(last, settings)}</> : 'First time doing this one'}
       </p>
 
-      <div className={`set-grid ${settings.showRpe ? 'with-rpe' : ''}`} role="table" aria-label={`${exercise.name} sets`}>
-        <div className="set-grid-head" role="row">
-          <span role="columnheader">Set</span>
-          <span role="columnheader">{settings.units}</span>
-          <span role="columnheader">Reps</span>
-          {settings.showRpe && <span role="columnheader">RPE</span>}
-          <span role="columnheader" className="sr-only">
-            Done
-          </span>
+      <div className={`set-grid ${settings.showRpe ? 'with-rpe' : ''}`}>
+        {/* Visual column headings; each control carries its own label for screen readers. */}
+        <div className="set-grid-head" aria-hidden="true">
+          <span>Set</span>
+          <span>{settings.units}</span>
+          <span>Reps</span>
+          {settings.showRpe && <span>RPE</span>}
+          <span />
         </div>
         {sets.map((set) => {
           const label = set.setType === 'warmup' ? 'W' : set.setType === 'drop' ? 'D' : set.setType === 'failure' ? 'F' : String(++workingNumber)
@@ -313,7 +312,7 @@ function SetRow({
   const isPR = done && !!set.prs?.length
 
   return (
-    <div className={`set-row ${done ? 'done' : ''} ${set.setType === 'warmup' ? 'warmup' : ''}`} role="row">
+    <div className={`set-row ${done ? 'done' : ''} ${set.setType === 'warmup' ? 'warmup' : ''}`} role="group" aria-label={`Set ${label}`}>
       <button className="set-label" onClick={onMenu} aria-label={`Set ${label} options`}>
         {isPR ? <Trophy size={16} aria-label="PR" /> : label}
       </button>
