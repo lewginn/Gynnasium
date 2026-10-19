@@ -378,6 +378,9 @@ svg {
   background: transparent;
   color: var(--red-text);
 }
+.btn-plain {
+  background: transparent;
+}
 
 .icon-btn {
   display: inline-grid;
@@ -1696,6 +1699,11 @@ select.input {
 
 .login {
   padding-top: calc(env(safe-area-inset-top) + 48px);
+}
+.login-alt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* ---------- Charts */

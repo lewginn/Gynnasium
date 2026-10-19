@@ -1,7 +1,9 @@
-import { CloudCheck, CloudOff, LoaderCircle, RefreshCw, TriangleAlert } from 'lucide-react'
+import { CloudCheck, CloudOff, KeyRound, LoaderCircle, RefreshCw, TriangleAlert } from 'lucide-react'
+import { useState } from 'react'
+import Sheet from './Sheet'
 import { useConfirm } from '../state/confirm'
 import { useNow } from '../state/restTimer'
-import { signOut, syncNow, useSync } from '../sync'
+import { setPassword, signOut, syncNow, useSync } from '../sync'
 
 /** Who you're signed in as, backup status, and sign out. (Signing in itself is the LoginScreen.) */
 export default function AccountCard() {
@@ -27,6 +29,8 @@ function SignedIn() {
   const sync = useSync()
   const now = useNow(30_000)
   const confirm = useConfirm()
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordSaved, setPasswordSaved] = useState(false)
 
   async function onSignOut() {
     const ok = await confirm({
@@ -69,7 +73,75 @@ function SignedIn() {
           Sign out
         </button>
       </div>
+      <button className="btn btn-sm btn-block" onClick={() => setChangingPassword(true)}>
+        <KeyRound size={16} aria-hidden /> Set a password
+      </button>
+      {passwordSaved && (
+        <p className="muted small" role="status">
+          Password saved. You can sign in with your email and password.
+        </p>
+      )}
+      {changingPassword && (
+        <PasswordSheet
+          onClose={() => setChangingPassword(false)}
+          onSaved={() => {
+            setChangingPassword(false)
+            setPasswordSaved(true)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+const MIN_PASSWORD = 8
+
+/** Lets someone who signed in by email link sign in with a password next time, without waiting for an email. */
+function PasswordSheet({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const sync = useSync()
+  const [password, setValue] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <Sheet title="Set a password" onClose={onClose}>
+      <form
+        className="stack-sm"
+        onSubmit={async (e) => {
+          e.preventDefault()
+          setSaving(true)
+          const err = await setPassword(password)
+          setSaving(false)
+          if (err) setError(err)
+          else onSaved()
+        }}
+      >
+        {/* Lets the browser's password manager save it against the right account. */}
+        <input type="email" autoComplete="username" value={sync.account?.email ?? ''} readOnly hidden />
+        <label className="field">
+          <span>New password</span>
+          <input
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            autoFocus
+            required
+            minLength={MIN_PASSWORD}
+            value={password}
+            onChange={(e) => setValue(e.target.value)}
+          />
+        </label>
+        <p className="muted small">At least {MIN_PASSWORD} characters. Then you can sign in with {sync.account?.email} and this password.</p>
+        {error && (
+          <p className="warning small" role="alert">
+            <TriangleAlert size={16} aria-hidden /> {error}
+          </p>
+        )}
+        <button type="submit" className="btn btn-primary btn-block" disabled={saving || password.length < MIN_PASSWORD}>
+          {saving ? 'Saving…' : 'Save password'}
+        </button>
+      </form>
+    </Sheet>
   )
 }
 
