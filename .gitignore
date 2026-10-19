@@ -1,0 +1,16 @@
+# VS Code workspace and settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Local history and workspace files
+.history/
+*.code-workspace
+
+# macOS
+.DS_Store
+
+# Environment files
+.env
