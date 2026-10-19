@@ -13,8 +13,8 @@ export default defineConfig({
         name: 'Gynnasium',
         short_name: 'Gynnasium',
         description: 'Track workouts, PRs and progress. Works offline.',
-        theme_color: '#000000',
-        background_color: '#000000',
+        theme_color: '#0e1013',
+        background_color: '#0e1013',
         display: 'standalone',
         start_url: '/',
         icons: [

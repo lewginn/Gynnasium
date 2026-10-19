@@ -1,162 +1,165 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import ActionSheet from '../components/ActionSheet'
-import Icon from '../components/Icon'
-import Page from '../components/Page'
-import ExerciseCard from '../components/workout/ExerciseCard'
-import RestPill from '../components/workout/RestTimer'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { ChevronLeft, Pause, Plus, Trash2, Trophy } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import ExerciseCard from '../components/ExerciseCard'
+import ExercisePicker from '../components/ExercisePicker'
+import RestTimerBar from '../components/RestTimerBar'
+import Sheet from '../components/Sheet'
+import { db } from '../db/db'
+import { addSessionExercise, alive, discardSession, finishSession, getActiveSession, loadSession } from '../db/repo'
 import { useSettings } from '../db/settings'
-import { discardWorkout, finishWorkout, useActiveSession, useWorkout, type WorkoutItem } from '../db/workout'
-import { useNow } from '../hooks/useNow'
+import { formatClock } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
-import { toDisplay } from '../lib/units'
-import { formatDuration, plannedSetCount, sessionVolumeKg } from '../lib/workout'
-
-const incomplete = (i: WorkoutItem) => i.sets.length < plannedSetCount(i.sets.length, i.previous.length)
+import { suggestExercises } from '../lib/suggest'
+import type { Exercise } from '../lib/types'
+import { restTimer, useNow } from '../state/restTimer'
+import { useWakeLock } from '../state/wakeLock'
 
 export default function WorkoutPage() {
-  const session = useActiveSession()
-  const data = useWorkout(session?.id)
-  const settings = useSettings()
-  const now = useNow(1000, !!session)
   const navigate = useNavigate()
-  const location = useLocation()
-  const [activeId, setActiveId] = useState<string | null>((location.state as { activeId?: string } | null)?.activeId ?? null)
-  const [finishing, setFinishing] = useState(false)
-  const [toast, setToast] = useState<{ title: string; detail: string } | null>(null)
+  const settings = useSettings()
+  const sessionId = useLiveQuery(async () => (await getActiveSession())?.id ?? null)
+  const detail = useLiveQuery(async () => (sessionId ? await loadSession(sessionId) : null), [sessionId])
+  const library = useLiveQuery(() => db.exercises.toArray())
+  // Rest times and focus come from the plan day the workout was started from.
+  const plan = useLiveQuery(async () => {
+    const dayId = detail?.session.planDayId
+    if (!dayId) return null
+    const day = await db.planDays.get(dayId)
+    const pes = await db.planExercises.where('planDayId').equals(dayId).filter(alive).toArray()
+    return { day, restByExercise: new Map(pes.map((pe) => [pe.exerciseId, pe.restSec])) }
+  }, [detail?.session.planDayId])
+  const [picking, setPicking] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const [prToast, setPrToast] = useState<string | null>(null)
+  const now = useNow(1000)
 
-  // Celebrate PRs as they happen, but not the ones already on screen when the page opens.
-  const seenPRs = useRef<Set<string> | null>(null)
+  useWakeLock(!!detail)
   useEffect(() => {
-    if (!data) return
-    if (!seenPRs.current) {
-      seenPRs.current = new Set(data.prs.keys())
-      return
-    }
-    for (const [setId, types] of data.prs) {
-      if (seenPRs.current.has(setId)) continue
-      seenPRs.current.add(setId)
-      const item = data.items.find((i) => i.sets.some((s) => s.id === setId))
-      setToast({ title: `New PR · ${PR_LABELS[types[0]]}`, detail: item?.exercise?.name ?? '' })
-      navigator.vibrate?.([30, 60, 30])
-    }
-  }, [data])
+    if (sessionId === null) navigate('/', { replace: true })
+  }, [sessionId, navigate])
   useEffect(() => {
-    if (!toast) return
-    const id = window.setTimeout(() => setToast(null), 3500)
-    return () => window.clearTimeout(id)
-  }, [toast])
+    if (!prToast) return
+    const t = setTimeout(() => setPrToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [prToast])
 
-  if (session === null) return <Navigate to="/" replace />
-  if (!session || !data) return <Page />
+  if (!detail) return <p className="muted">Loading…</p>
+  const { session, exercises } = detail
+  const doneSets = exercises.flatMap((e) => e.sets).filter((s) => s.completedAt).length
 
-  const { items } = data
-  const allSets = items.flatMap((i) => i.sets)
-  const active = items.find((i) => i.sessionExercise.id === activeId) ?? items.find(incomplete) ?? items.at(-1)
-  const activeIndex = active ? items.indexOf(active) : -1
-  const nextItem = [...items.slice(activeIndex + 1), ...items.slice(0, activeIndex)].find(incomplete)
+  const restFor = (exercise: Exercise) => plan?.restByExercise.get(exercise.id) ?? exercise.defaultRestSec ?? settings.defaultRestSec
 
   const finish = async () => {
-    navigate(`/workouts/${session.id}`, { replace: true, state: { justFinished: true } })
-    await finishWorkout(session.id)
+    if (doneSets === 0 && !confirm('No sets ticked off yet. Finish and discard this workout?')) return
+    const pendingSets = exercises.flatMap((e) => e.sets).filter((s) => !s.completedAt).length
+    if (doneSets > 0 && pendingSets > 0 && !confirm(`${pendingSets} sets aren't ticked off. Finish anyway? They won't be saved.`)) return
+    restTimer.dismiss()
+    const kept = await finishSession(session.id)
+    navigate(kept ? `/history/${session.id}` : '/', { replace: true })
   }
+
   const discard = async () => {
+    if (!confirm('Discard this workout? Nothing from it will be saved.')) return
+    restTimer.dismiss()
+    await discardSession(session.id)
     navigate('/', { replace: true })
-    await discardWorkout(session.id)
   }
 
   return (
-    <Page
-      title={session.name}
-      leading={
-        <Link to="/" className="nav-back glass" aria-label="Minimise workout">
-          <Icon name="chevronDown" size={22} />
-        </Link>
-      }
-      trailing={
-        <button className="btn btn-filled btn-nav" onClick={() => setFinishing(true)}>
+    <div className="workout">
+      <header className="workout-header">
+        <button className="icon-btn" aria-label="Leave workout" onClick={() => setLeaving(true)}>
+          <ChevronLeft size={26} />
+        </button>
+        <div className="grow">
+          <h1>{session.name}</h1>
+          <span className="muted small" aria-label="Elapsed time">
+            {formatClock((now - session.startedAt) / 1000)} · {doneSets} {doneSets === 1 ? 'set' : 'sets'}
+          </span>
+        </div>
+        <button className="btn btn-primary" onClick={finish}>
           Finish
         </button>
-      }
-    >
-      <dl className="stat-strip">
-        <div>
-          <dt>Duration</dt>
-          <dd className="num">{formatDuration(now - session.startedAt)}</dd>
-        </div>
-        <div>
-          <dt>Volume</dt>
-          <dd className="num">
-            {Math.round(toDisplay(sessionVolumeKg(allSets), settings.units)).toLocaleString()}
-            <small>{settings.units}</small>
-          </dd>
-        </div>
-        <div>
-          <dt>Sets</dt>
-          <dd className="num">{allSets.length}</dd>
-        </div>
-      </dl>
+      </header>
 
-      {items.length === 0 ? (
-        <section className="empty">
-          <Icon name="dumbbell" size={52} />
-          <h2>Add your first exercise</h2>
-          <p>Each set is pre-filled from last time, so logging is a single tap.</p>
+      {exercises.length === 0 && (
+        <section className="card empty">
+          <h2>Empty workout</h2>
+          <p className="muted">Add exercises as you go.</p>
         </section>
-      ) : (
-        <div className="ex-list">
-          {items.map((item) => (
-            <ExerciseCard
-              key={item.sessionExercise.id}
-              item={item}
-              prs={data.prs}
-              units={settings.units}
-              showRpe={settings.showRpe}
-              defaultRestSec={settings.defaultRestSec}
-              active={item === active}
-              onActivate={() => setActiveId(item.sessionExercise.id)}
-              next={
-                nextItem && {
-                  name: nextItem.exercise?.name ?? 'next exercise',
-                  go: () => setActiveId(nextItem.sessionExercise.id),
-                }
-              }
-            />
-          ))}
+      )}
+
+      {exercises.map((entry, i) => (
+        <ExerciseCard
+          key={entry.se.id}
+          entry={entry}
+          first={i === 0}
+          last={i === exercises.length - 1}
+          sessionId={session.id}
+          settings={settings}
+          library={library ?? []}
+          onSetDone={(prs) => {
+            restTimer.start(restFor(entry.exercise), entry.exercise.name)
+            // The headline PR is enough mid-set; the summary lists them all.
+            if (prs?.length) setPrToast(`${PR_LABELS[prs[0]]} on ${entry.exercise.name}`)
+          }}
+        />
+      ))}
+
+      <button className="btn btn-block" onClick={() => setPicking(true)}>
+        <Plus size={20} aria-hidden /> Add exercise
+      </button>
+      <button className="btn btn-danger-text btn-block btn-sm" onClick={discard}>
+        Discard workout
+      </button>
+
+      {leaving && (
+        <Sheet title="Leave workout?" onClose={() => setLeaving(false)}>
+          <div className="menu-list">
+            <button className="menu-item" onClick={() => navigate('/')}>
+              <Pause size={20} aria-hidden />
+              <span>
+                Keep it for later
+                <span className="muted small block">Carry on any time from Today. Nothing is lost.</span>
+              </span>
+            </button>
+            <button className="menu-item danger" onClick={discard}>
+              <Trash2 size={20} aria-hidden />
+              <span>
+                Discard workout
+                <span className="muted small block">Delete it without saving anything.</span>
+              </span>
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {prToast && (
+        <div className="toast" role="status">
+          <Trophy size={24} aria-hidden />
+          <span>
+            <strong className="block">New PR!</strong>
+            <span className="small">{prToast}</span>
+          </span>
         </div>
       )}
 
-      <Link to="/workout/add" className={`btn ${items.length === 0 ? 'btn-filled' : 'btn-gray'}`}>
-        <Icon name="plus" size={20} />
-        Add exercise
-      </Link>
+      <RestTimerBar />
 
-      {toast && (
-        <div className="toast glass" role="status">
-          <span className="toast-icon">
-            <Icon name="star" size={18} />
-          </span>
-          <span className="toast-body">
-            <span className="toast-title">{toast.title}</span>
-            <span className="toast-detail">{toast.detail}</span>
-          </span>
-        </div>
+      {picking && (
+        <ExercisePicker
+          title="Add exercise"
+          onClose={() => setPicking(false)}
+          onPick={(e) => addSessionExercise(session.id, e)}
+          excludeIds={exercises.map((e) => e.exercise.id)}
+          suggestions={
+            plan?.day ? suggestExercises(library ?? [], plan.day.focusMuscles, exercises.map((e) => e.exercise), 5) : []
+          }
+          suggestionsTitle={plan?.day ? `Suggested for ${plan.day.name}` : undefined}
+        />
       )}
-      <RestPill />
-      <ActionSheet
-        open={finishing}
-        title={allSets.length > 0 ? 'Finish workout?' : 'No sets logged yet'}
-        message={
-          allSets.length > 0
-            ? `${allSets.length} ${allSets.length === 1 ? 'set' : 'sets'} in ${formatDuration(now - session.startedAt)}`
-            : 'Discard this workout, or keep going.'
-        }
-        actions={[
-          ...(allSets.length > 0 ? [{ label: 'Finish workout', onSelect: finish }] : []),
-          { label: 'Discard workout', destructive: true, onSelect: discard },
-        ]}
-        onClose={() => setFinishing(false)}
-      />
-    </Page>
+    </div>
   )
 }

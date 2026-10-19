@@ -1,93 +1,97 @@
-import { useRef, useState } from 'react'
-import Icon from './Icon'
+import { Minus, Plus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
-type Props = {
-  label: string
-  unit: string
+interface Props {
   value: number
+  onChange: (value: number) => unknown
   step: number
   min?: number
-  onChange: (value: number) => void
+  max?: number
+  label: string
+  /** Shown after the number, e.g. "kg". */
+  unit?: string
+  decimals?: boolean
+  disabled?: boolean
 }
 
-const HOLD_DELAY = 400
-const HOLD_INTERVAL = 80
-
-/**
- * Big −/+ stepper around a number you can also type into.
- * Holding a button repeats, so getting from 60 to 100kg doesn't take 16 taps.
- */
-export default function Stepper({ label, unit, value, step, min = 0, onChange }: Props) {
+/** − value + control. Tap the number to type an exact value with the numeric keyboard. */
+export default function Stepper({ value, onChange, step, min = 0, max = 9999, label, unit, decimals, disabled }: Props) {
   const [draft, setDraft] = useState<string | null>(null)
-  const latest = useRef(value)
-  latest.current = value
-  const timer = useRef<number | undefined>(undefined)
-  const held = useRef(false)
+  // The value we've asked to save but haven't seen come back yet. Quick repeated taps build on it, so
+  // three fast taps of + always add three steps, rather than each starting from the last saved value.
+  // The ref is the source of truth for taps (it updates before React re-renders); the state drives the display.
+  const [pending, setPending] = useState<number | null>(null)
+  const pendingRef = useRef<number | null>(null)
+  const current = pending ?? value
 
-  const nudge = (direction: 1 | -1) => {
-    const next = Math.max(min, Math.round((latest.current + direction * step) * 100) / 100)
-    latest.current = next
+  const clearPending = () => {
+    pendingRef.current = null
+    setPending(null)
+  }
+  useEffect(() => {
+    if (pending !== null && pendingRef.current === pending && Math.abs(value - pending) < 1e-6) clearPending()
+  }, [value, pending])
+  useEffect(() => {
+    // Fallback if the saved value comes back different (e.g. rounded): show what's actually stored.
+    if (pending === null) return
+    const t = setTimeout(clearPending, 1500)
+    return () => clearTimeout(t)
+  }, [pending])
+
+  const clamp = (v: number) => Math.min(max, Math.max(min, v))
+  const set = (v: number) => {
+    const next = clamp(Number(v.toFixed(2)))
+    pendingRef.current = next
+    setPending(next)
     onChange(next)
   }
+  const bump = (delta: number) => set((pendingRef.current ?? value) + delta)
+  const display = Number(current.toFixed(2)).toString()
 
-  const stopHold = () => {
-    window.clearTimeout(timer.current)
-    window.clearInterval(timer.current)
+  const commit = () => {
+    if (draft === null) return
+    const parsed = parseFloat(draft.replace(',', '.'))
+    if (!Number.isNaN(parsed)) set(decimals ? parsed : Math.round(parsed))
+    setDraft(null)
   }
 
-  const button = (direction: 1 | -1) => (
-    <button
-      type="button"
-      className="stepper-button"
-      aria-label={`${direction === 1 ? 'Increase' : 'Decrease'} ${label}`}
-      onPointerDown={() => {
-        held.current = false
-        stopHold()
-        timer.current = window.setTimeout(() => {
-          held.current = true
-          timer.current = window.setInterval(() => nudge(direction), HOLD_INTERVAL)
-        }, HOLD_DELAY)
-      }}
-      onPointerUp={stopHold}
-      onPointerLeave={stopHold}
-      onPointerCancel={stopHold}
-      onContextMenu={(e) => e.preventDefault()}
-      onClick={() => {
-        // A hold already stepped; don't add one more on release.
-        if (held.current) held.current = false
-        else nudge(direction)
-      }}
-    >
-      <Icon name={direction === 1 ? 'plus' : 'minus'} size={22} />
-    </button>
-  )
-
   return (
-    <div className="stepper">
-      {button(-1)}
+    <div className="stepper" role="group" aria-label={label}>
+      <button
+        type="button"
+        className="stepper-btn"
+        aria-label={`Decrease ${label}`}
+        disabled={disabled || current <= min}
+        onClick={() => bump(-step)}
+      >
+        <Minus size={18} />
+      </button>
       <label className="stepper-value">
         <input
-          className="num"
-          type="text"
-          inputMode="decimal"
-          enterKeyHint="done"
           aria-label={label}
-          value={draft ?? String(value)}
+          inputMode={decimals ? 'decimal' : 'numeric'}
+          enterKeyHint="done"
+          disabled={disabled}
+          value={draft ?? display}
           onFocus={(e) => {
-            setDraft(String(value))
-            e.currentTarget.select()
+            setDraft(display)
+            e.target.select()
           }}
-          onChange={(e) => {
-            setDraft(e.target.value)
-            const parsed = Number(e.target.value.replace(',', '.'))
-            if (e.target.value !== '' && Number.isFinite(parsed)) onChange(Math.max(min, parsed))
-          }}
-          onBlur={() => setDraft(null)}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         />
-        <span className="stepper-unit">{unit}</span>
+        {unit && <span className="stepper-unit">{unit}</span>}
       </label>
-      {button(1)}
+      <button
+        type="button"
+        className="stepper-btn"
+        aria-label={`Increase ${label}`}
+        disabled={disabled || current >= max}
+        onClick={() => bump(step)}
+      >
+        <Plus size={18} />
+      </button>
     </div>
   )
 }
