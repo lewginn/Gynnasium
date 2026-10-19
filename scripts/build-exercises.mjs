@@ -65,12 +65,12 @@ const EQUIPMENT = {
 const PATTERNS = [
   [/farmer|carry|yoke/i, 'carry'],
   [/lunge|split squat|step-?up|bulgarian/i, 'lunge'],
-  [/deadlift|rdl|good morning|hip thrust|glute bridge|swing|pull[- ]through|hyperextension|clean|snatch/i, 'hinge'],
   [/squat|leg press|hack/i, 'squat'],
+  [/deadlift|rdl|good morning|hip thrust|glute bridge|swing|pull[- ]through|hyperextension|clean|snatch/i, 'hinge'],
   [/pull-?up|chin-?up|pulldown|pull-down/i, 'vertical_pull'],
   [/row/i, 'horizontal_pull'],
   [/overhead|military|shoulder press|push press|arnold|jerk|handstand/i, 'vertical_push'],
-  [/bench|push-?up|chest press|dip|floor press|incline press|decline press/i, 'horizontal_push'],
+  [/bench|push-?up|chest press|dip|floor press|(incline|decline).*press/i, 'horizontal_push'],
 ]
 
 function movementPattern(ex) {
@@ -94,6 +94,7 @@ const out = raw
       equipment: EQUIPMENT[ex.equipment] ?? 'other',
       mechanic,
       level: ex.level,
+      category: ex.category,
       defaultRestSec: mechanic === 'compound' ? 150 : 90,
       image: ex.images[0] ?? null,
     }

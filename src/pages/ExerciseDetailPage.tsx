@@ -1,13 +1,22 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link, useParams } from 'react-router-dom'
+import { ChevronLeft, Trophy } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { db } from '../db/db'
+import { exerciseHistory } from '../db/repo'
+import { useSettings } from '../db/settings'
+import { formatDay, formatRest } from '../lib/format'
 import { EQUIPMENT_LABELS, MUSCLE_LABELS, PATTERN_LABELS } from '../lib/labels'
+import { bestE1RM, countsForStats, summariseSets } from '../lib/summary'
+import { formatWeight } from '../lib/units'
 
 const IMAGE_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
 
 export default function ExerciseDetailPage() {
   const { id = '' } = useParams()
+  const navigate = useNavigate()
+  const settings = useSettings()
   const exercise = useLiveQuery(async () => (await db.exercises.get(id)) ?? null, [id])
+  const history = useLiveQuery(() => exerciseHistory(id), [id])
 
   if (exercise === undefined) return <p className="muted">Loading…</p>
   if (exercise === null)
@@ -18,20 +27,71 @@ export default function ExerciseDetailPage() {
       </section>
     )
 
+  const allSets = history?.flatMap((h) => h.sets) ?? []
+  const working = allSets.filter(countsForStats)
+  const e1rm = bestE1RM(allSets)
+  const heaviest = working.length ? Math.max(...working.map((s) => s.weightKg)) : null
+
   return (
     <>
       <header className="page-header">
-        <Link to="/exercises" className="back-link">
-          ‹ Exercises
-        </Link>
+        <button className="back-link" onClick={() => (window.history.state?.idx ? navigate(-1) : navigate('/exercises'))}>
+          <ChevronLeft size={18} aria-hidden /> Back
+        </button>
         <h1>{exercise.name}</h1>
+        <p className="muted small">
+          {exercise.primaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')} · {EQUIPMENT_LABELS[exercise.equipment]}
+        </p>
       </header>
+
+      {working.length > 0 && (
+        <div className="stat-row">
+          <div className="stat">
+            <span className="stat-value">{e1rm ? formatWeight(e1rm, settings.units).replace(/(\.\d)\d+/, '$1') : '–'}</span>
+            <span className="stat-label">Best est. 1RM</span>
+          </div>
+          <div className="stat">
+            <span className="stat-value">{heaviest !== null ? formatWeight(heaviest, settings.units) : '–'}</span>
+            <span className="stat-label">Heaviest</span>
+          </div>
+          <div className="stat">
+            <span className="stat-value">{history?.length ?? 0}</span>
+            <span className="stat-label">Workouts</span>
+          </div>
+        </div>
+      )}
+
+      <section className="card" aria-labelledby="history-heading">
+        <h2 id="history-heading">History</h2>
+        {history && history.length > 0 ? (
+          <ul className="history-list">
+            {history.map(({ session, sets }) => (
+              <li key={session.id}>
+                <Link to={`/history/${session.id}`} className="history-date">
+                  {formatDay(session.startedAt)}
+                </Link>
+                <span>
+                  {summariseSets(sets.filter((s) => s.setType !== 'warmup'), settings)}
+                  {sets.some((s) => s.prs?.length) && <Trophy size={14} className="pr-icon" aria-label="PR" />}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">You haven't logged this yet. Your sets, PRs and estimated 1RM will show here.</p>
+        )}
+      </section>
+
       {exercise.image && (
-        <img className="exercise-image" src={IMAGE_BASE + exercise.image} alt=""
-          loading="lazy"
+        <img
+          className="exercise-image"
+          src={IMAGE_BASE + exercise.image}
+          alt=""
           width={320}
           height={240}
-          onError={(e) => (e.currentTarget.hidden = true)}
+          // Hidden until it arrives, so there's no empty box while loading or when offline.
+          hidden
+          onLoad={(e) => (e.currentTarget.hidden = false)}
         />
       )}
       <dl className="card details">
@@ -50,12 +110,8 @@ export default function ExerciseDetailPage() {
           {PATTERN_LABELS[exercise.movementPattern]} · {exercise.mechanic}
         </dd>
         <dt>Default rest</dt>
-        <dd>{Math.round(exercise.defaultRestSec / 60 * 10) / 10} min</dd>
+        <dd>{formatRest(exercise.defaultRestSec)}</dd>
       </dl>
-      <section className="card">
-        <h2>History</h2>
-        <p className="muted">Your sets, PRs and estimated 1RM for this exercise will show here.</p>
-      </section>
     </>
   )
 }
