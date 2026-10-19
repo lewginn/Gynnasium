@@ -157,13 +157,56 @@ export async function accessToken(): Promise<string | null> {
   return data.session?.access_token ?? null
 }
 
+const offline = "You're offline. Connect to the internet to sign in."
+
 /** Emails a one-tap login link that opens back in this app. */
 export async function sendLoginLink(email: string): Promise<string | null> {
-  if (!navigator.onLine) return "You're offline. Connect to the internet to sign in."
+  if (!navigator.onLine) return offline
   const { supabase } = await load()
   if (!supabase) return 'Sign-in isn’t set up on this version of the app.'
   const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } })
-  return error ? error.message : null
+  return error ? authMessage(error.message) : null
+}
+
+/** Supabase's messages, in the app's words. */
+function authMessage(message: string): string {
+  if (/invalid login credentials/i.test(message)) return 'Wrong email or password.'
+  if (/email not confirmed/i.test(message)) return 'Confirm your email first: open the link we sent you.'
+  if (/already registered/i.test(message)) return 'There’s already an account with this email. Sign in instead.'
+  if (/rate limit/i.test(message)) return 'Too many emails sent for now. Try again in an hour, or sign in with your password.'
+  return message
+}
+
+/** Signs in with email and password. Returns an error to show, or null (the auth listener takes it from there). */
+export async function signInWithPassword(email: string, password: string): Promise<string | null> {
+  if (!navigator.onLine) return offline
+  const { supabase } = await load()
+  if (!supabase) return 'Sign-in isn’t set up on this version of the app.'
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  return error ? authMessage(error.message) : null
+}
+
+/** Creates an account. If the project asks new accounts to confirm their email, `confirm` is true and nobody is signed in yet. */
+export async function createAccount(email: string, password: string): Promise<{ error: string | null; confirm: boolean }> {
+  if (!navigator.onLine) return { error: offline, confirm: false }
+  const { supabase } = await load()
+  if (!supabase) return { error: 'Sign-in isn’t set up on this version of the app.', confirm: false }
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
+  if (error) return { error: authMessage(error.message), confirm: false }
+  // An existing, confirmed email comes back with no identities (Supabase doesn't reveal that the account exists).
+  if (data.user && data.user.identities?.length === 0) return { error: authMessage('already registered'), confirm: false }
+  return { error: null, confirm: !data.session }
+}
+
+/** Sets or changes the signed-in account's password, so you can sign in without an email. */
+export async function setPassword(password: string): Promise<string | null> {
+  if (!navigator.onLine) return "You're offline. Connect to the internet to change your password."
+  const { supabase } = await load()
+  if (!supabase) return 'Sign-in isn’t set up on this version of the app.'
+  const { error } = await supabase.auth.updateUser({ password })
+  if (!error) return null
+  if (/session/i.test(error.message)) return 'Your login has expired. Sign out and back in, then try again.'
+  return authMessage(error.message)
 }
 
 /** Signs out and returns to the login screen. Data stays on the phone for when you sign back in. */

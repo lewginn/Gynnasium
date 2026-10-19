@@ -1700,6 +1700,11 @@ select.input {
 .login {
   padding-top: calc(env(safe-area-inset-top) + 48px);
 }
+.login-alt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
 /* ---------- Charts */
 

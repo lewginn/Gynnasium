@@ -41,12 +41,12 @@ test.describe('signed out', () => {
     await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Plans' })).toHaveCount(0)
-    await shot(page, 'p2-login')
   })
 
   test('request a login link', async ({ page }) => {
     const rec = await recordSupabase(page)
     await page.goto('/')
+    await page.getByRole('button', { name: 'Email me a login link instead' }).tap()
     await page.getByLabel('Email').fill('lewis@example.com')
     await page.getByRole('button', { name: 'Email me a login link' }).tap()
     await expect(page.getByText('Check your email')).toBeVisible()
@@ -61,6 +61,49 @@ test.describe('signed out', () => {
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
     await nav(page, 'Settings')
     await expect(page.getByRole('region', { name: 'Account & backup' })).toContainText(`Signed in as ${TEST_USER.email}`)
+  })
+
+  test('sign in with email and password', async ({ page }) => {
+    const logins: { email: string; password: string }[] = []
+    await page.route(`${SUPABASE}/auth/v1/token?grant_type=password`, async (route) => {
+      const body = route.request().postDataJSON()
+      logins.push({ email: body.email, password: body.password })
+      if (body.password !== 'correct horse')
+        return route.fulfill({ status: 400, json: { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' } })
+      const { token, exp } = fakeJwt()
+      return route.fulfill({ status: 200, json: { access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: exp, refresh_token: 'r', user: userJson() } })
+    })
+    await page.goto('/')
+    await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible()
+    await shot(page, 'p2-login')
+    await page.getByLabel('Email').fill(TEST_USER.email)
+    await page.getByLabel('Password').fill('wrong')
+    await page.getByRole('button', { name: 'Sign in', exact: true }).tap()
+    await expect(page.getByRole('alert')).toContainText('Wrong email or password')
+
+    await page.getByLabel('Password').fill('correct horse')
+    await page.getByRole('button', { name: 'Sign in', exact: true }).tap()
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
+    expect(logins.at(-1)).toEqual({ email: TEST_USER.email, password: 'correct horse' })
+  })
+
+  test('create an account (when the email must be confirmed first)', async ({ page }) => {
+    const signups: Record<string, unknown>[] = []
+    await page.route(`${SUPABASE}/auth/v1/signup**`, async (route) => {
+      signups.push(route.request().postDataJSON())
+      // No session: the project asks new accounts to confirm their email.
+      return route.fulfill({ status: 200, json: { ...userJson({ id: '33333333-3333-4333-8333-333333333333', email: 'new@example.com' }), identities: [{ id: 'i' }] } })
+    })
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Create an account' }).tap()
+    const form = page.getByRole('form', { name: 'Create account' })
+    await form.getByLabel('Email').fill('new@example.com')
+    await form.getByLabel('Password').fill('short')
+    await expect(form.getByRole('button', { name: 'Create account' })).toBeDisabled()
+    await form.getByLabel('Password').fill('long enough')
+    await form.getByRole('button', { name: 'Create account' }).tap()
+    await expect(page.getByText('To finish creating your account')).toBeVisible()
+    expect(signups[0]).toMatchObject({ email: 'new@example.com', password: 'long enough' })
   })
 
   test('an expired link says so', async ({ page }) => {
@@ -125,6 +168,22 @@ test('data from another device is pulled in', async ({ page }) => {
   await expect(page.getByRole('link', { name: /From my laptop/ })).toBeVisible()
   await nav(page, 'Progress')
   await expect(page.getByRole('region', { name: 'Body' })).toContainText('81.5')
+})
+
+test('set a password from Settings, to sign in without waiting for an email', async ({ page }) => {
+  const updates: Record<string, unknown>[] = []
+  await page.route(`${SUPABASE}/auth/v1/user**`, async (route) => {
+    if (route.request().method() === 'PUT') updates.push(route.request().postDataJSON())
+    return route.fulfill({ status: 200, json: userJson() })
+  })
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Set a password' }).tap()
+  const sheet = page.getByRole('dialog', { name: 'Set a password' })
+  await sheet.getByLabel('New password').fill('correct horse')
+  await sheet.getByRole('button', { name: 'Save password' }).tap()
+  await expect(page.getByText('Password saved')).toBeVisible()
+  await expect(sheet).toHaveCount(0)
+  expect(updates).toEqual([expect.objectContaining({ password: 'correct horse' })])
 })
 
 test('settings are backed up when changed', async ({ page }) => {
