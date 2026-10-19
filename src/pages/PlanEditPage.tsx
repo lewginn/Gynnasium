@@ -29,6 +29,11 @@ import type { Exercise, Muscle, PlanExercise } from '../lib/types'
 import { useConfirm } from '../state/confirm'
 
 const REST_OPTIONS = [30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
+const PROGRESSION_OPTIONS: [PlanExercise['progressionRule'], string][] = [
+  ['double_progression', 'Add reps, then weight'],
+  ['linear', 'Add weight each time'],
+  ['none', 'Off: repeat last time'],
+]
 
 export default function PlanEditPage() {
   const { planId = '' } = useParams()
@@ -322,6 +327,19 @@ function PlanExerciseRow({
                     {formatRest(s)}
                   </option>
                 ))}
+            </select>
+            <span>Progression</span>
+            <select
+              className="input"
+              aria-label="Progression"
+              value={pe.progressionRule}
+              onChange={(e) => update({ progressionRule: e.target.value as PlanExercise['progressionRule'] })}
+            >
+              {PROGRESSION_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="row">
