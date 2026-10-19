@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateMinutes, startOfWeek, weekStreak, weekSummary } from './week'
+import { startOfWeek, weekStreak, weekSummary } from './week'
 
 // Wednesday 21 October 2026, 18:00 local time.
 const wed = new Date(2026, 9, 21, 18).getTime()
@@ -36,13 +36,5 @@ describe('weekStreak', () => {
   it('is zero after a missed week', () => {
     expect(weekStreak([day(6)], wed)).toBe(0)
     expect(weekStreak([], wed)).toBe(0)
-  })
-})
-
-describe('estimateMinutes', () => {
-  it('adds each set and its rest, to the nearest 5 minutes', () => {
-    // 4 × (40 + 150) + 3 × (40 + 90) = 760 + 390 = 1150s ≈ 19 min → 20
-    expect(estimateMinutes([{ targetSets: 4, restSec: 150 }, { targetSets: 3, restSec: 90 }])).toBe(20)
-    expect(estimateMinutes([])).toBe(5)
   })
 })

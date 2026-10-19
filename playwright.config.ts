@@ -14,9 +14,11 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'android',
+      // The owner uses an iPhone. Playwright's iPhone profile defaults to WebKit; Chromium is what CI installs.
+      name: 'iphone',
       use: {
-        ...devices['Pixel 7'],
+        ...devices['iPhone 15'],
+        browserName: 'chromium',
         // Cloud dev containers ship a pre-installed Chromium; CI uses Playwright's own download.
         launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
       },

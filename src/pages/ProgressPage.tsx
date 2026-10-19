@@ -19,8 +19,8 @@ export default function ProgressPage() {
           <h1>Progress</h1>
         </header>
         <section className="card empty">
-          <h2>Nothing to show yet</h2>
-          <p className="muted">Finish a workout and your history and PRs will show up here. Charts come next.</p>
+          <h2>No workouts yet</h2>
+          <p className="muted">Finish a workout to see your history and PRs here.</p>
         </section>
       </>
     )
@@ -34,7 +34,7 @@ export default function ProgressPage() {
       {prs && prs.length > 0 && (
         <section className="card pr-card">
           <h2>
-            <Trophy size={20} aria-hidden /> Recent PRs
+            <Trophy size={14} aria-hidden className="pr-mark" /> Recent PRs
           </h2>
           <ul className="plain-list">
             {prs.map(({ set, exercise }) => (

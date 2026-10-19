@@ -51,10 +51,10 @@ test('screen tour', async ({ page }) => {
   await bench.getByRole('button', { name: 'Increase Set 1 weight' }).tap()
   await bench.getByRole('button', { name: 'Complete set 1' }).tap()
   await freezeClock(page)
-  await expect(page.getByRole('status').filter({ hasText: 'New PR!' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'New PR' })).toBeVisible()
   await snap('workout-pr-and-rest-timer')
   await page.clock.fastForward('02:31')
-  await expect(page.getByText('Rest over, time for your next set')).toBeVisible()
+  await expect(page.getByText('Rest over', { exact: true })).toBeVisible()
   await snap('workout-rest-over')
   await page.clock.resume()
 

@@ -23,16 +23,14 @@ import { PR_LABELS } from '../lib/prs'
 import { bestSet, formatSet } from '../lib/summary'
 import type { SetLog } from '../lib/types'
 import { toDisplay } from '../lib/units'
-import { estimateMinutes, startOfWeek, weekStreak, weekSummary } from '../lib/week'
+import { startOfWeek, weekStreak, weekSummary } from '../lib/week'
 import { useNow } from '../state/restTimer'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 /** Only celebrate a PR on Today while it's fresh. */
 const PR_FRESH_MS = 14 * 86400000
-/** How many of the next day's exercises the hero lists before "and N more". */
+/** How many of the next day's exercises the hero lists; the rest are a tap away. */
 const HERO_EXERCISES = 3
-
-const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 
 /** Launchpad: what to do next, how the week is going, and what you did recently. */
 export default function TodayPage() {
@@ -85,6 +83,9 @@ export default function TodayPage() {
   const date = new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
   const showWeek = !active && week && (week.starts.length > 0 || !!plan)
   const freshPR = latestPR && now - latestPR.set.completedAt! < PR_FRESH_MS ? latestPR : null
+  // Render the page in one go once everything has loaded: cards appearing one by one push the
+  // Start buttons around, and a tap aimed at one lands on another.
+  const loaded = [active, plan, recent, week, latestPR].every((x) => x !== undefined)
 
   return (
     <>
@@ -92,138 +93,127 @@ export default function TodayPage() {
         <span className="header-date">{date}</span>
         <h1>Today</h1>
       </header>
-
-      {active && (
-        <Link to="/workout" className="card hero hero-live">
-          <span className="eyebrow">Workout in progress</span>
-          <span className="hero-title">{active.session.name}</span>
-          <span className="hero-timer" aria-label="Elapsed time">
-            {formatClock((now - active.session.startedAt) / 1000)}
-          </span>
-          {active.total > 0 && (
-            <span className="hero-progress">
-              <span className="hero-progress-bar" style={{ width: `${(active.done / active.total) * 100}%` }} />
-              <span className="muted small">
-                {active.done} of {active.total} sets done
-              </span>
-            </span>
-          )}
-          <span className="btn btn-primary btn-hero">Resume workout</span>
-        </Link>
-      )}
-
-      {!active && next && (
-        <section className="card hero" aria-label="Up next">
-          <button className="hero-head" onClick={() => setPreviewDayId(next.day.id)} aria-label={`${next.day.name}: view exercises`}>
-            <span className="eyebrow">Up next · {plan!.plan.name}</span>
-            <span className="hero-title">{next.day.name}</span>
-            <span className="hero-meta">
-              {next.exercises.length === 0
-                ? 'No exercises yet'
-                : `${next.exercises.length} ${next.exercises.length === 1 ? 'exercise' : 'exercises'} · about ${estimateMinutes(next.exercises.map((e) => e.pe))} min`}
-            </span>
-          </button>
-          {next.exercises.length > 0 ? (
-            <ol className="hero-list">
-              {next.exercises.slice(0, HERO_EXERCISES).map(({ pe, exercise }) => {
-                const best = bests?.get(exercise.id)
-                return (
-                  <li key={pe.id}>
-                    <span className="hero-exercise">
-                      <span className="hero-exercise-name">{exercise.name}</span>
-                      <span className="list-meta">{formatTarget(pe.targetSets, pe.repMin, pe.repMax, exercise.logging)}</span>
-                    </span>
-                    <span className="hero-last">
-                      {best ? (
-                        <>
-                          <span className="hero-last-label">Last</span>
-                          {formatSet(best, settings, exercise.logging)}
-                        </>
-                      ) : (
-                        <span className="hero-last-label">New</span>
-                      )}
-                    </span>
-                  </li>
-                )
-              })}
-              {next.exercises.length > HERO_EXERCISES && (
-                <li className="hero-more muted small">and {next.exercises.length - HERO_EXERCISES} more</li>
-              )}
-            </ol>
-          ) : (
-            <p className="muted">
-              <Link to={`/plans/${plan!.plan.id}`}>Add exercises</Link> to this day to start it.
-            </p>
-          )}
-          <button className="btn btn-primary btn-block btn-hero" onClick={() => start(next.day.id)} disabled={next.exercises.length === 0}>
-            <Play size={20} aria-hidden fill="currentColor" /> Start {next.day.name}
-          </button>
-        </section>
-      )}
-
-      {!active && plan && plan.days.length === 0 && (
-        <section className="card">
-          <span className="eyebrow">{plan.plan.name}</span>
-          <p className="muted">
-            This plan has no days yet. <Link to={`/plans/${plan.plan.id}`}>Add some</Link>
-          </p>
-        </section>
-      )}
-
-      {!active && plan === null && (
-        <section className="card hero">
-          <h2 className="hero-title">Get started</h2>
-          <p className="muted">Build a plan or pick a template, or just start a workout and add exercises as you go.</p>
-          <Link to="/plans" className="btn btn-primary btn-block btn-hero">
-            Create a plan
-          </Link>
-        </section>
-      )}
-
-      {showWeek && (
-        <WeekCard
-          starts={week.starts}
-          now={now}
-          goal={plan?.days.length ?? 0}
-          volume={toDisplay(week.volumeKg, settings.units)}
-          units={settings.units}
-        />
-      )}
-
-      {freshPR && (
-        <Link to={`/exercises/${encodeURIComponent(freshPR.exercise.id)}`} className="card pr-row">
-          <span className="pr-medal">
-            <Trophy size={20} aria-hidden />
-          </span>
-          <span className="grow">
-            <span className="eyebrow">Latest PR · {formatDay(freshPR.set.completedAt!, now)}</span>
-            <span className="list-title">{freshPR.exercise.name}</span>
-            <span className="list-meta">{PR_LABELS[freshPR.set.prs![0]]}</span>
-          </span>
-          <span className="pr-value">{formatSet(freshPR.set, settings, freshPR.exercise.logging)}</span>
-        </Link>
-      )}
-
-      {!active && otherDays.length > 0 && (
+      {loaded && (
         <>
-          <h2 className="section-label">Other days</h2>
-          <ul className="day-list">
-            {otherDays.map(({ day, exercises }) => (
-              <li key={day.id} className="day-row">
-                <button className="day-button" onClick={() => setPreviewDayId(day.id)} aria-label={`${day.name}: view exercises`}>
-                  <span className="list-title">{day.name}</span>
-                  <span className="list-meta">
-                    {exercises.length === 0
-                      ? 'No exercises yet'
-                      : `${exercises.length} exercises · about ${estimateMinutes(exercises.map((e) => e.pe))} min`}
+          {active && (
+            <section className="card hero hero-live" aria-label="Workout in progress">
+              <span className="eyebrow">Workout in progress</span>
+              <h2 className="hero-title">{active.session.name}</h2>
+              <span className="hero-timer" aria-label="Elapsed time">
+                {formatClock((now - active.session.startedAt) / 1000)}
+              </span>
+              {active.total > 0 && (
+                <span className="hero-progress">
+                  <span className="hero-progress-bar" style={{ width: `${(active.done / active.total) * 100}%` }} />
+                  <span className="muted small">
+                    {active.done} of {active.total} sets done
                   </span>
-                </button>
-                <button className="day-start" onClick={() => start(day.id)} disabled={exercises.length === 0} aria-label={`Start ${day.name}`}>
-                  <Play size={20} aria-hidden />
-                </button>
-              </li>
-            ))}
-          </ul>
+                </span>
+              )}
+              <Link to="/workout" className="btn btn-primary btn-block btn-hero">
+                Resume workout
+              </Link>
+            </section>
+          )}
+
+          {!active && next && (
+            <section className="card hero" aria-label="Up next">
+              <span className="eyebrow">Up next in {plan!.plan.name}</span>
+              <h2 className="hero-title">{next.day.name}</h2>
+              {next.exercises.length > 0 ? (
+                <ol className="hero-list">
+                  {next.exercises.slice(0, HERO_EXERCISES).map(({ pe, exercise }) => {
+                    const best = bests?.get(exercise.id)
+                    return (
+                      <li key={pe.id}>
+                        <span className="hero-exercise">
+                          <span className="hero-exercise-name">{exercise.name}</span>
+                          <span className="list-meta">
+                            {formatTarget(pe.targetSets, pe.repMin, pe.repMax, exercise.logging)}
+                            {best && `, last time ${formatSet(best, settings, exercise.logging)}`}
+                          </span>
+                        </span>
+                      </li>
+                    )
+                  })}
+                  {next.exercises.length > HERO_EXERCISES && (
+                    <li>
+                      <button className="hero-more" onClick={() => setPreviewDayId(next.day.id)}>
+                        All {next.exercises.length} exercises
+                      </button>
+                    </li>
+                  )}
+                </ol>
+              ) : (
+                <p className="muted">
+                  <Link to={`/plans/${plan!.plan.id}`}>Add exercises</Link> to this day to start it.
+                </p>
+              )}
+              <button className="btn btn-primary btn-block btn-hero" onClick={() => start(next.day.id)} disabled={next.exercises.length === 0}>
+                <Play size={20} aria-hidden fill="currentColor" /> Start {next.day.name}
+              </button>
+            </section>
+          )}
+
+          {!active && plan && plan.days.length === 0 && (
+            <section className="card">
+              <span className="eyebrow">{plan.plan.name}</span>
+              <p className="muted">
+                This plan has no days yet. <Link to={`/plans/${plan.plan.id}`}>Add some</Link>
+              </p>
+            </section>
+          )}
+
+          {!active && plan === null && (
+            <section className="card hero">
+              <h2 className="hero-title">No plan yet</h2>
+              <p className="muted">Pick a template or build your own. Or start an empty workout and add exercises as you go.</p>
+              <Link to="/plans" className="btn btn-primary btn-block btn-hero">
+                Create a plan
+              </Link>
+            </section>
+          )}
+
+          {showWeek && (
+            <WeekCard
+              starts={week.starts}
+              now={now}
+              goal={plan?.days.length ?? 0}
+              volume={toDisplay(week.volumeKg, settings.units)}
+              units={settings.units}
+            />
+          )}
+
+          {freshPR && (
+            <Link to={`/exercises/${encodeURIComponent(freshPR.exercise.id)}`} className="card pr-row">
+              <Trophy size={14} aria-hidden className="pr-mark" />
+              <span className="grow">
+                <span className="eyebrow">Latest PR · {formatDay(freshPR.set.completedAt!, now)}</span>
+                <span className="list-title">{freshPR.exercise.name}</span>
+                <span className="list-meta">{PR_LABELS[freshPR.set.prs![0]]}</span>
+              </span>
+              <span className="pr-value">{formatSet(freshPR.set, settings, freshPR.exercise.logging)}</span>
+            </Link>
+          )}
+
+          {!active && otherDays.length > 0 && (
+            <>
+              <h2 className="section-label">Other days</h2>
+              <ul className="day-list">
+                {otherDays.map(({ day, exercises }) => (
+                  <li key={day.id} className="day-row">
+                    <button className="day-button" onClick={() => setPreviewDayId(day.id)} aria-label={`${day.name}: view exercises`}>
+                      <span className="list-title">{day.name}</span>
+                      <span className="list-meta">
+                        {exercises.length === 0 ? 'No exercises yet' : `${exercises.length} exercises`}
+                      </span>
+                    </button>
+                    <button className="day-start" onClick={() => start(day.id)} disabled={exercises.length === 0} aria-label={`Start ${day.name}`}>
+                      <Play size={20} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
         </>
       )}
 
@@ -280,6 +270,8 @@ export default function TodayPage() {
           </ul>
         </>
       )}
+        </>
+      )}
     </>
   )
 }
@@ -317,7 +309,7 @@ function WeekCard({ starts, now, goal, volume, units }: { starts: number[]; now:
         <div>
           <dt>Volume</dt>
           <dd>
-            {compact.format(Math.round(volume))}
+            {Math.round(volume).toLocaleString()}
             <small> {units}</small>
           </dd>
         </div>

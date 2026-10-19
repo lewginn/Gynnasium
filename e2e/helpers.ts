@@ -35,11 +35,19 @@ export async function addExerciseToWorkout(page: Page, search: string, name: Reg
   await expect(dialog).toBeHidden()
 }
 
-/** Finish the current workout, accepting the "unticked sets" confirm if it appears. */
+/** Taps the go-ahead button in the confirmation sheet. */
+export async function confirmSheet(page: Page, action: string) {
+  await page.getByRole('dialog').getByRole('button', { name: action, exact: true }).tap()
+}
+
+/** Finish the current workout, going ahead if the "unticked sets" confirmation appears. */
 export async function finishWorkout(page: Page) {
-  page.once('dialog', (d) => d.accept())
-  await page.getByRole('button', { name: 'Finish' }).tap()
-  await expect(page.getByText('Duration')).toBeVisible()
+  await page.getByRole('button', { name: 'Finish', exact: true }).tap()
+  const sheet = page.getByRole('dialog')
+  const summary = page.getByText('Duration')
+  await expect(summary.or(sheet)).toBeVisible()
+  if (await sheet.isVisible()) await confirmSheet(page, 'Finish')
+  await expect(summary).toBeVisible()
 }
 
 /**

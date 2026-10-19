@@ -48,12 +48,3 @@ export function weekStreak(sessionStarts: number[], now: number): number {
   }
   return streak
 }
-
-/** Seconds a working set takes, on top of its rest. */
-const SET_SEC = 40
-
-/** Rough length of a plan day, rounded to 5 minutes: each set plus the rest after it. */
-export function estimateMinutes(exercises: { targetSets: number; restSec: number }[]): number {
-  const sec = exercises.reduce((sum, e) => sum + e.targetSets * (SET_SEC + e.restSec), 0)
-  return Math.max(5, Math.round(sec / 300) * 5)
-}

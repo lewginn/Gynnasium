@@ -8,11 +8,13 @@ test('Today is a launchpad: up next, this week, latest PR, workout in progress',
   await addPushPullLegsPlan(page)
   await nav(page, 'Today')
 
-  // Up next: the day, how long it'll take, what's in it, and one button to start.
+  // Up next: the day, what's in it, and one button to start. The rest of the list is a tap away.
   const hero = page.getByRole('region', { name: 'Up next' })
-  await expect(hero.getByRole('button', { name: 'Push: view exercises' })).toContainText(/about \d+ min/)
-  await expect(hero).toContainText(BENCH)
-  await expect(hero).toContainText('New') // never done before
+  await expect(hero.getByRole('heading', { name: 'Push', exact: true })).toBeVisible()
+  await expect(hero.getByRole('listitem').filter({ hasText: BENCH })).toHaveText(`${BENCH}4 × 5–8`) // nothing to compare yet
+  await hero.getByRole('button', { name: 'All 5 exercises' }).tap()
+  await expect(page.getByRole('dialog', { name: 'Push' }).getByRole('listitem')).toHaveCount(5)
+  await page.getByRole('button', { name: 'Close' }).tap()
   await expect(page.getByRole('region', { name: 'This week' })).toContainText('Workouts0 / 3')
   await shot(page, 'today-launchpad-new')
 
@@ -24,7 +26,7 @@ test('Today is a launchpad: up next, this week, latest PR, workout in progress',
   await finishWorkout(page)
   await page.getByRole('link', { name: 'Done' }).tap()
 
-  await expect(hero.getByRole('button', { name: 'Pull: view exercises' })).toContainText('Up next')
+  await expect(hero.getByRole('heading', { name: 'Pull', exact: true })).toBeVisible()
   const week = page.getByRole('region', { name: 'This week' })
   await expect(week).toContainText('Workouts1 / 3')
   await expect(week).toContainText('Streak1 week')
@@ -50,8 +52,8 @@ test('Today is a launchpad: up next, this week, latest PR, workout in progress',
   await page.getByRole('button', { name: /Keep it for later/ }).tap()
 
   // A workout in progress takes over the hero.
-  const live = page.getByRole('link', { name: /Resume/ })
-  await expect(live).toContainText('Workout in progress')
+  const live = page.getByRole('region', { name: 'Workout in progress' })
+  await expect(live.getByRole('link', { name: 'Resume workout' })).toBeVisible()
   await expect(live).toContainText(/0 of \d+ sets done/)
   await expect(page.getByRole('region', { name: 'Up next' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Start empty workout' })).toHaveCount(0)
@@ -79,7 +81,7 @@ test('Up next shows last time’s best set for each exercise', async ({ page }) 
   }
 
   const hero = page.getByRole('region', { name: 'Up next' })
-  await expect(hero.getByRole('button', { name: 'Push: view exercises' })).toBeVisible()
-  await expect(hero.getByRole('listitem').filter({ hasText: BENCH })).toContainText('Last85kg × 5')
+  await expect(hero.getByRole('heading', { name: 'Push', exact: true })).toBeVisible()
+  await expect(hero.getByRole('listitem').filter({ hasText: BENCH })).toContainText('last time 85kg × 5')
   await shot(page, 'today-up-next-history')
 })

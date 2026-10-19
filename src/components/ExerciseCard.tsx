@@ -66,7 +66,7 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
       </div>
       {showLastTime && (
         <p className="muted small last-time">
-          {previous && previous.length > 0 ? <>Last time: {summariseSets(previous, settings, logging)}</> : 'First time doing this one'}
+          {previous && previous.length > 0 ? <>Last time: {summariseSets(previous, settings, logging)}</> : 'No history yet'}
         </p>
       )}
 
@@ -204,7 +204,7 @@ function SetRow({
   return (
     <div className={`set-row ${done ? 'done' : ''} ${current ? 'current' : ''} ${set.setType === 'warmup' ? 'warmup' : ''}`} role="group" aria-label={`Set ${label}`}>
       <button className="set-label" onClick={onMenu} aria-label={`Set ${label} options`}>
-        {isPR ? <Trophy size={16} aria-label="PR" /> : label}
+        {isPR ? <Trophy size={14} aria-label="PR" className="pr-mark" /> : label}
       </button>
       <Stepper
         label={`Set ${label} weight`}
