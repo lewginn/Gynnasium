@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronLeft, ChevronUp, Pencil, Play, Plus, Sparkles, Trash2, TriangleAlert } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronUp, MessagesSquare, Pencil, Play, Plus, Sparkles, Trash2, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ExercisePicker from '../components/ExercisePicker'
@@ -70,13 +70,18 @@ export default function PlanEditPage() {
             <Pencil size={18} />
           </button>
         </div>
-        {plan.isActive ? (
-          <span className="badge">Active plan</span>
-        ) : (
-          <button className="btn btn-sm" onClick={() => setActivePlan(plan.id)}>
-            Make active
-          </button>
-        )}
+        <div className="row plan-actions">
+          {plan.isActive ? (
+            <span className="badge grow">Active plan</span>
+          ) : (
+            <button className="btn btn-sm" onClick={() => setActivePlan(plan.id)}>
+              Make active
+            </button>
+          )}
+          <Link to={`/plans/${plan.id}/coach`} className="btn btn-sm">
+            <MessagesSquare size={16} aria-hidden /> Ask Claude
+          </Link>
+        </div>
       </header>
 
       <div className="chips day-tabs" role="group" aria-label="Days">

@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ChartLine, Dumbbell, House, ListChecks, Settings } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
 import WorkoutBar from './components/WorkoutBar'
+import CoachPage from './pages/CoachPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import EditSessionPage from './pages/EditSessionPage'
 import ExercisesPage from './pages/ExercisesPage'
@@ -41,6 +42,8 @@ export default function App() {
           <Route path="/history/:sessionId/edit" element={<EditSessionPage />} />
           <Route path="/plans" element={<PlansPage />} />
           <Route path="/plans/:planId" element={<PlanEditPage />} />
+          <Route path="/plans/:planId/coach" element={<CoachPage />} />
+          <Route path="/coach" element={<CoachPage />} />
           <Route path="/exercises" element={<ExercisesPage />} />
           <Route path="/exercises/:id" element={<ExerciseDetailPage />} />
           <Route path="/progress" element={<ProgressPage />} />

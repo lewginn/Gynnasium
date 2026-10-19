@@ -240,6 +240,16 @@ export function describeTarget(t: Target, logging: LoggingType): string {
   return `${target(t.sets, t.repMin, t.repMax, logging)}, rest ${formatRest(t.restSec)}`
 }
 
+/** Only what changes: "3 → 4 sets · rest 1:30 → 2 min". */
+export function describeEdit(from: Target, to: Target, logging: LoggingType): string {
+  const range = (t: Target) => (t.repMin === t.repMax ? `${t.repMin}` : `${t.repMin}–${t.repMax}`)
+  const parts: string[] = []
+  if (from.sets !== to.sets) parts.push(`${from.sets} → ${to.sets} sets`)
+  if (range(from) !== range(to)) parts.push(`${range(from)} → ${range(to)} ${logging === 'time' ? 's' : 'reps'}`)
+  if (from.restSec !== to.restSec) parts.push(`rest ${formatRest(from.restSec)} → ${formatRest(to.restSec)}`)
+  return parts.join(' · ')
+}
+
 /** One line per change for the preview: what happens, where, and why. */
 export function describeChange(c: ResolvedChange, detail: CoachPlan): ChangeLine {
   const dayName = (id: string) => detail.days.find((d) => d.day.id === id)?.day.name ?? 'a day'
@@ -262,11 +272,7 @@ export function describeChange(c: ResolvedChange, detail: CoachPlan): ChangeLine
     case 'update_exercise': {
       const r = row(c.planExerciseId)!
       const now = { sets: r.pe.targetSets, repMin: r.pe.repMin, repMax: r.pe.repMax, restSec: r.pe.restSec }
-      return {
-        kind: 'edit',
-        title: r.exercise.name,
-        detail: why(`${describeTarget(now, r.exercise.logging)} → ${describeTarget({ ...now, ...c.target }, r.exercise.logging)}`),
-      }
+      return { kind: 'edit', title: r.exercise.name, detail: why(describeEdit(now, { ...now, ...c.target }, r.exercise.logging)) }
     }
     case 'move_exercise': {
       const r = row(c.planExerciseId)

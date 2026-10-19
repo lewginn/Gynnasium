@@ -1,5 +1,7 @@
+import type { ResolvedChange, TrainingSummary } from '../lib/coach'
+import type { ProposedPlan } from '../lib/coachSchema'
 import { estimate1RM } from '../lib/e1rm'
-import { weeklyCounts, type Point } from '../lib/metrics'
+import { toDateKey, weeklyCounts, type Point } from '../lib/metrics'
 import { detectPRs } from '../lib/prs'
 import { inferFocusMuscles } from '../lib/suggest'
 import { totalVolumeKg } from '../lib/summary'
@@ -690,4 +692,159 @@ export async function volumeSinceKg(since: number): Promise<number> {
   const sets = await db.setLogs.filter((s) => alive(s) && !!s.completedAt && s.completedAt >= since).toArray()
   const exercises = await loadExercises(sets.map((s) => s.exerciseId))
   return totalVolumeKg(sets.filter((s) => exercises.get(s.exerciseId)?.logging === 'weight_reps'))
+}
+
+// ---------------------------------------------------------------- Coach
+
+/** Creates a plan from one Claude proposed (already checked against the library). */
+export async function createPlanFromProposal(proposal: ProposedPlan): Promise<string> {
+  const library = await loadExercises(proposal.days.flatMap((d) => d.exercises.map((e) => e.exerciseId)))
+  const planId = uuid()
+  const t = now()
+  await db.transaction('rw', db.plans, db.planDays, db.planExercises, async () => {
+    const hasActive = (await db.plans.toArray()).some((p) => alive(p) && p.isActive)
+    await db.plans.add({ id: planId, name: proposal.name, goal: proposal.goal || undefined, isActive: !hasActive, createdBy: 'ai', updatedAt: t })
+    for (const [dayOrder, day] of proposal.days.entries()) {
+      const dayId = uuid()
+      await db.planDays.add({ id: dayId, planId, name: day.name, order: dayOrder, focusMuscles: day.focusMuscles, updatedAt: t })
+      await db.planExercises.bulkAdd(
+        day.exercises
+          .filter((e) => library.has(e.exerciseId))
+          .map((e, order) => newPlanExercise(dayId, e.exerciseId, order, { sets: e.sets, repMin: e.repMin, repMax: e.repMax, restSec: e.restSec }, t)),
+      )
+    }
+  })
+  return planId
+}
+
+type Target = { sets: number; repMin: number; repMax: number; restSec: number }
+
+function newPlanExercise(planDayId: string, exerciseId: string, order: number, target: Target, t: number): PlanExercise {
+  return {
+    id: uuid(),
+    planDayId,
+    exerciseId,
+    order,
+    targetSets: target.sets,
+    repMin: target.repMin,
+    repMax: target.repMax,
+    restSec: target.restSec,
+    progressionRule: 'double_progression',
+    alternates: [],
+    updatedAt: t,
+  }
+}
+
+const targetPatch = (t: Partial<Target>): Partial<PlanExercise> => ({
+  ...(t.sets !== undefined && { targetSets: t.sets }),
+  ...(t.repMin !== undefined && { repMin: t.repMin }),
+  ...(t.repMax !== undefined && { repMax: t.repMax }),
+  ...(t.restSec !== undefined && { restSec: t.restSec }),
+})
+
+/** Applies changes the user approved, in one transaction. Changes to rows an earlier change removed are skipped. */
+export async function applyPlanChanges(planId: string, changes: ResolvedChange[]) {
+  await db.transaction('rw', db.plans, db.planDays, db.planExercises, async () => {
+    const t = now()
+    const dayRows = async (dayId: string) => (await db.planExercises.where('planDayId').equals(dayId).filter(alive).toArray()).sort(byOrder)
+    const renumber = async (rows: { id: string; order: number }[]) => {
+      for (const [order, row] of rows.entries()) if (row.order !== order) await db.planExercises.update(row.id, { order, updatedAt: t })
+    }
+    const place = async (dayId: string, row: PlanExercise, position: number | null) => {
+      const rows = (await dayRows(dayId)).filter((r) => r.id !== row.id)
+      rows.splice(position === null ? rows.length : Math.min(rows.length, position - 1), 0, row)
+      await renumber(rows)
+    }
+    const liveRow = async (id: string) => {
+      const row = await db.planExercises.get(id)
+      return alive(row) ? row : undefined
+    }
+
+    for (const c of changes) {
+      switch (c.op) {
+        case 'add_exercise': {
+          if (!alive(await db.planDays.get(c.dayId))) break
+          const row = newPlanExercise(c.dayId, c.exercise.id, Number.MAX_SAFE_INTEGER, c.target, t)
+          await db.planExercises.add(row)
+          await place(c.dayId, row, c.position)
+          break
+        }
+        case 'remove_exercise': {
+          const row = await liveRow(c.planExerciseId)
+          if (!row) break
+          await db.planExercises.update(row.id, { deletedAt: t, updatedAt: t })
+          await renumber(await dayRows(row.planDayId))
+          break
+        }
+        case 'replace_exercise':
+          if (await liveRow(c.planExerciseId)) await db.planExercises.update(c.planExerciseId, { exerciseId: c.exercise.id, ...targetPatch(c.target), updatedAt: t })
+          break
+        case 'update_exercise':
+          if (await liveRow(c.planExerciseId)) await db.planExercises.update(c.planExerciseId, { ...targetPatch(c.target), updatedAt: t })
+          break
+        case 'move_exercise': {
+          const row = await liveRow(c.planExerciseId)
+          if (row) await place(row.planDayId, row, c.position)
+          break
+        }
+        case 'add_day': {
+          const dayId = uuid()
+          const order = await db.planDays.where('planId').equals(planId).filter(alive).count()
+          const muscles = [...new Set(c.exercises.flatMap((e) => e.exercise.primaryMuscles))]
+          await db.planDays.add({ id: dayId, planId, name: c.name, order, focusMuscles: muscles.length ? muscles : inferFocusMuscles(c.name), updatedAt: t })
+          await db.planExercises.bulkAdd(c.exercises.map((e, i) => newPlanExercise(dayId, e.exercise.id, i, e.target, t)))
+          break
+        }
+        case 'remove_day': {
+          if (!alive(await db.planDays.get(c.dayId))) break
+          await deleteDayRows(c.dayId, t)
+          const days = (await db.planDays.where('planId').equals(planId).filter(alive).toArray()).sort(byOrder)
+          for (const [order, day] of days.entries()) if (day.order !== order) await db.planDays.update(day.id, { order, updatedAt: t })
+          break
+        }
+        case 'rename_day':
+          if (alive(await db.planDays.get(c.dayId))) await db.planDays.update(c.dayId, { name: c.name, updatedAt: t })
+          break
+        case 'rename_plan':
+          await db.plans.update(planId, { name: c.name, updatedAt: t })
+          break
+      }
+    }
+  })
+}
+
+/** What the coach should know about your recent training: how often, your best sets, bodyweight, other plans. */
+export async function coachTrainingSummary(excludePlanId?: string, weeks = 6): Promise<TrainingSummary> {
+  const since = now() - weeks * 7 * 86_400_000
+  const sessions = (await db.sessions.toArray()).filter((s) => alive(s) && !!s.endedAt && s.startedAt >= since)
+  const ses = (await db.sessionExercises.where('sessionId').anyOf(sessions.map((s) => s.id)).toArray()).filter(alive)
+  const sets = (await db.setLogs.where('sessionExerciseId').anyOf(ses.map((s) => s.id)).toArray()).filter(
+    (s) => alive(s) && !!s.completedAt && s.setType !== 'warmup',
+  )
+  const exercises = await loadExercises(sets.map((s) => s.exerciseId))
+
+  const byExercise = new Map<string, SetLog[]>()
+  for (const s of sets) byExercise.set(s.exerciseId, [...(byExercise.get(s.exerciseId) ?? []), s])
+  const score = (s: SetLog, logging: LoggingType) =>
+    logging === 'time' ? (s.durationSec ?? 0) : logging === 'bodyweight' ? s.reps : (estimate1RM(s.weightKg, s.reps, s.rpe) ?? s.weightKg)
+  const lifts = [...byExercise.entries()]
+    .filter(([id]) => exercises.has(id))
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 15)
+    .map(([id, list]) => {
+      const exercise = exercises.get(id)!
+      const best = list.reduce((a, b) => (score(b, exercise.logging) > score(a, exercise.logging) ? b : a))
+      return {
+        exercise,
+        weightKg: best.weightKg,
+        reps: best.reps,
+        durationSec: best.durationSec,
+        e1rmKg: exercise.logging === 'weight_reps' ? estimate1RM(best.weightKg, best.reps, best.rpe) : null,
+        date: toDateKey(best.completedAt!),
+      }
+    })
+
+  const weight = (await bodyMetrics('bodyweight'))[0]
+  const otherPlans = (await db.plans.toArray()).filter((p) => alive(p) && p.id !== excludePlanId).map((p) => p.name)
+  return { workouts: sessions.length, weeks, bodyweightKg: weight && { value: weight.value, date: weight.date }, lifts, otherPlans }
 }

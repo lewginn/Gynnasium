@@ -149,6 +149,14 @@ export function syncNow(): Promise<void> {
   return running
 }
 
+/** A current access token for calling our own API as the signed-in user (refreshed if needed), or null offline / signed out. */
+export async function accessToken(): Promise<string | null> {
+  if (!configured) return null
+  const { supabase } = await load()
+  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } }
+  return data.session?.access_token ?? null
+}
+
 /** Emails a one-tap login link that opens back in this app. */
 export async function sendLoginLink(email: string): Promise<string | null> {
   if (!navigator.onLine) return "You're offline. Connect to the internet to sign in."

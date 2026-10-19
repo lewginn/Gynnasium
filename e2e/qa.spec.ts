@@ -380,6 +380,21 @@ async function axeMainScreens(page: Page) {
     expect(serious, serious.join('\n')).toEqual([])
   }
   await check('plan editor')
+  await page.route('**/api/coach', (route) =>
+    route.fulfill({
+      json: {
+        message: 'Dumbbells hit the same muscles.',
+        newPlan: null,
+        changes: [
+          { op: 'replace_exercise', day: null, exercise: 'x1', exerciseId: 'Dumbbell_Bench_Press', name: null, sets: null, repMin: null, repMax: null, restSec: null, position: null, exercises: null, reason: 'Bench taken' },
+        ],
+      },
+    }),
+  )
+  await page.getByRole('link', { name: 'Ask Claude' }).tap()
+  await page.getByRole('button', { name: 'The squat rack is taken today' }).tap()
+  await expect(page.getByRole('region', { name: 'Proposed changes' })).toBeVisible()
+  await check('coach')
   for (const name of ['Today', 'Exercises', 'Progress', 'Settings']) {
     await nav(page, name)
     await check(name)

@@ -378,6 +378,9 @@ svg {
   background: transparent;
   color: var(--red-text);
 }
+.btn-plain {
+  background: transparent;
+}
 
 .icon-btn {
   display: inline-grid;
@@ -1911,4 +1914,138 @@ select.input {
   min-height: 56px;
   color: var(--label);
   text-decoration: none;
+}
+
+/* ---------- Coach */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.coach-starters {
+  margin-bottom: 16px;
+}
+.chat {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.bubble {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: var(--radius-l);
+  font-size: 17px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+.bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.bubble-user {
+  justify-self: end;
+  background: var(--tint);
+  color: var(--on-tint);
+}
+.bubble-coach {
+  justify-self: start;
+  background: var(--cell);
+  color: var(--label);
+}
+.bubble-coach:has(.proposal) {
+  max-width: 100%;
+  width: 100%;
+}
+.coach-thinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--label-2);
+}
+.proposal {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--separator);
+}
+.proposal h3 {
+  margin: 0 0 2px;
+}
+.proposal .section-label {
+  margin: 12px 0 4px;
+  padding: 0;
+}
+.proposal .plain-list {
+  gap: 6px;
+}
+.proposal .row {
+  margin-top: 12px;
+}
+.proposal > p.muted {
+  margin: 10px 0 0;
+}
+.proposal-done {
+  color: var(--tint);
+  font-weight: 600;
+}
+.change-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.change {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.change-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--fill-3);
+  color: var(--label-2);
+}
+.change-add .change-icon {
+  background: var(--tint-soft);
+  color: var(--tint);
+}
+.change-remove .change-icon {
+  color: var(--red-text);
+}
+/* Stays just above the tab bar (and the workout bar, if a workout is going) while the chat scrolls. */
+.composer {
+  position: sticky;
+  bottom: calc(var(--tab-h) + var(--tab-gap) + 8px);
+  z-index: 5;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 8px 16px;
+  background: var(--bg);
+}
+.app:has(.workout-bar) .composer {
+  bottom: calc(var(--tab-h) + var(--tab-gap) + 72px);
+}
+.composer-input {
+  flex: 1;
+  min-height: 50px;
+  padding: 12px 14px;
+  resize: none;
+  line-height: 22px;
+}
+.composer-send {
+  flex: none;
+  width: 50px;
+  padding: 0;
 }

@@ -36,6 +36,11 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - The Supabase client is lazy-loaded (`src/sync/supabase.ts`) so it never slows app start. Builds without `VITE_SUPABASE_*` run local-only.
 - E2E builds point at a fake project (`https://gynnasium-test.supabase.co`); `e2e/sync.spec.ts` answers its requests with `page.route`.
 
+## Coach (api/coach.ts, src/lib/coach.ts, src/pages/CoachPage.tsx)
+- `api/coach.ts` is a Vercel function (Node ESM): checks the Supabase login and `COACH_ALLOWED_EMAILS`, then calls Claude with structured output (`src/lib/coachSchema.ts`). It's compiled as plain Node, so its relative imports end in `.js`, and anything it imports from `src/` may only have type imports. Tests for it go in `api/_*.test.ts` (an underscore keeps Vercel from deploying a file as an endpoint).
+- The app sends the chat plus a text context (plan with refs d1/x1, recent training, units). Claude replies with a message and either `newPlan` or `changes`; `src/lib/coach.ts` checks them against the library and the plan, and the page previews them. Nothing is written until Apply (`applyPlanChanges` / `createPlanFromProposal`).
+- Instructions and the exercise catalogue form one cached system block: keep anything that varies per request out of it.
+
 ## Charts (src/components/charts/)
 - Plain SVG, no chart library. 2px lines, ringed end-dot labelled with the latest value, 1px recessive grid, crosshair + tooltip on touch/hover/arrow keys, legend only for 2+ series, a "Show as table" view.
 - Colours are `--chart-primary` / `--chart-muted` / `--chart-grid`, validated for colour-blind separation and contrast in both themes. `--chart-muted` is de-emphasis only (always with a legend).

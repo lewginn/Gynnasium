@@ -1,5 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { checkChanges } from '../lib/coach'
+import type { PlanChange } from '../lib/coachSchema'
 import { PLAN_TEMPLATES } from '../lib/templates'
 import { db, ensureExerciseLibrary } from './db'
 import {
@@ -7,8 +9,11 @@ import {
   addPlanExercise,
   addSessionExercise,
   addSet,
+  applyPlanChanges,
+  coachTrainingSummary,
   completeSet,
   createPlan,
+  createPlanFromProposal,
   createPlanFromTemplate,
   discardSession,
   exerciseHistory,
@@ -16,6 +21,7 @@ import {
   finishedSessionStarts,
   getActiveSession,
   loadExercise,
+  loadExercises,
   loadPlan,
   loadSession,
   movePlanExercise,
@@ -280,3 +286,89 @@ describe('today', () => {
   })
 })
 
+
+describe('coach', () => {
+  const change = (c: Partial<PlanChange> & Pick<PlanChange, 'op'>): PlanChange => ({
+    day: null,
+    exercise: null,
+    exerciseId: null,
+    name: null,
+    sets: null,
+    repMin: null,
+    repMax: null,
+    restSec: null,
+    position: null,
+    exercises: null,
+    reason: '',
+    ...c,
+  })
+
+  async function apply(planId: string, changes: PlanChange[]) {
+    const detail = (await loadPlan(planId))!
+    const library = await loadExercises(changes.flatMap((c) => [c.exerciseId ?? '', ...(c.exercises ?? []).map((e) => e.exerciseId)]))
+    const checked = checkChanges(changes, detail, library)
+    expect(checked.skipped).toEqual([])
+    await applyPlanChanges(planId, checked.changes)
+    return (await loadPlan(planId))!
+  }
+  const names = (plan: Awaited<ReturnType<typeof loadPlan>>, day = 0) => plan!.days[day].exercises.map((x) => x.exercise.id)
+
+  it('creates a plan from a proposal, marked as made by Claude', async () => {
+    const id = await createPlanFromProposal({
+      name: 'Strength',
+      goal: 'Get stronger on the big lifts',
+      days: [{ name: 'A', focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }] }],
+    })
+    const plan = (await loadPlan(id))!
+    expect(plan.plan).toMatchObject({ name: 'Strength', goal: 'Get stronger on the big lifts', createdBy: 'ai', isActive: true })
+    expect(plan.days[0].exercises[0].pe).toMatchObject({ exerciseId: 'Barbell_Squat', targetSets: 5, repMin: 5, repMax: 5, restSec: 180 })
+  })
+
+  it('swaps, edits, adds and moves exercises in place', async () => {
+    const planId = await createPlanFromTemplate(PLAN_TEMPLATES[0])
+    const before = names(await loadPlan(planId))
+    const after = await apply(planId, [
+      change({ op: 'replace_exercise', exercise: 'x1', exerciseId: 'Dumbbell_Bench_Press' }),
+      change({ op: 'update_exercise', exercise: 'x2', sets: 5 }),
+      change({ op: 'add_exercise', day: 'd1', exerciseId: 'Pushups', sets: 2, repMin: 10, repMax: 20, restSec: 60, position: 1 }),
+      change({ op: 'move_exercise', exercise: 'x5', position: 2 }),
+    ])
+    const ids = names(after)
+    expect(ids[0]).toBe('Pushups')
+    expect(ids[1]).toBe(before[4])
+    expect(ids).toContain('Dumbbell_Bench_Press')
+    expect(ids).not.toContain(before[0])
+    expect(after.days[0].exercises.map((x) => x.pe.order)).toEqual(ids.map((_, i) => i))
+    expect(after.days[0].exercises.find((x) => x.exercise.id === before[1])!.pe.targetSets).toBe(5)
+  })
+
+  it('removes and adds days, and skips changes to rows already removed', async () => {
+    const planId = await createPlanFromTemplate(PLAN_TEMPLATES[0])
+    const after = await apply(planId, [
+      change({ op: 'remove_day', day: 'd1' }),
+      change({ op: 'remove_exercise', exercise: 'x1' }), // was on the removed day
+      change({ op: 'add_day', name: 'Arms', exercises: [{ exerciseId: 'Barbell_Curl', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] }),
+      change({ op: 'rename_day', day: 'd2', name: 'Back' }),
+      change({ op: 'rename_plan', name: 'PL + arms' }),
+    ])
+    expect(after.plan.name).toBe('PL + arms')
+    expect(after.days.map((d) => d.day.name)).toEqual(['Back', 'Legs', 'Arms'])
+    expect(after.days.map((d) => d.day.order)).toEqual([0, 1, 2])
+    expect(after.days[2].day.focusMuscles).toEqual(['biceps'])
+    // Removed rows are soft-deleted so the removal syncs.
+    expect((await db.planExercises.toArray()).filter((r) => r.deletedAt).length).toBeGreaterThan(0)
+  })
+
+  it('summarises recent training for the coach', async () => {
+    await logWorkout('Barbell_Squat', [
+      [100, 5],
+      [90, 8],
+    ])
+    await createPlan('Other plan')
+    const summary = await coachTrainingSummary()
+    expect(summary.workouts).toBe(1)
+    expect(summary.otherPlans).toEqual(['Other plan'])
+    expect(summary.lifts[0]).toMatchObject({ weightKg: 100, reps: 5 })
+    expect(summary.lifts[0].exercise.id).toBe('Barbell_Squat')
+  })
+})
