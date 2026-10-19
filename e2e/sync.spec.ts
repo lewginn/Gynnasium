@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { SUPABASE, TEST_USER, expect, fakeJwt, signInAs, test, userJson } from './fixtures'
-import { addExerciseToWorkout, exerciseCard, finishWorkout, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
+import { addExerciseToWorkout, confirmSheet, exerciseCard, finishWorkout, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 // Login and backup against a mocked Supabase: these exercise the real app code and check the exact requests it sends.
 
@@ -142,8 +142,8 @@ test('sign out returns to the login screen; signing back in keeps your data', as
   await page.getByRole('region', { name: 'Body' }).getByRole('button', { name: 'Log' }).tap()
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).tap()
   await nav(page, 'Settings')
-  page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Sign out' }).tap()
+  await confirmSheet(page, 'Sign out')
   await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible()
 
   await page.reload() // the fixture signs the same account back in
@@ -157,8 +157,8 @@ test("someone else signing in on this phone doesn't see your data", async ({ pag
   await page.getByRole('button', { name: 'Use Push / Pull / Legs template' }).tap()
   await expect(page.getByRole('heading', { level: 1, name: 'Push / Pull / Legs' })).toBeVisible()
   await nav(page, 'Settings')
-  page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Sign out' }).tap()
+  await confirmSheet(page, 'Sign out')
   await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible()
 
   // A friend signs in on the same phone.

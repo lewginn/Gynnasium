@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { freezeClock } from './helpers'
+import { confirmSheet, freezeClock } from './helpers'
 
 const shot = (page: Page, name: string) => page.screenshot({ path: `test-results/screens/${name}.png` })
 
@@ -62,12 +62,12 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
 
   // Workout 1: set a baseline on bench.
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Today' }).tap()
-  await expect(page.getByRole('button', { name: 'Push: view exercises' })).toContainText('Up next')
+  await expect(page.getByRole('region', { name: 'Up next' }).getByRole('heading', { name: 'Push', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Start Push' }).tap()
   await expect(page.getByRole('heading', { level: 1, name: 'Push' })).toBeVisible()
 
   const bench = page.getByRole('region', { name: 'Barbell Bench Press - Medium Grip' })
-  await expect(bench.getByText('First time doing this one')).toBeVisible()
+  await expect(bench.getByText('No history yet')).toBeVisible()
   await bench.getByRole('textbox', { name: 'Set 1 weight', exact: true }).fill('80')
   await bench.getByRole('textbox', { name: 'Set 1 weight', exact: true }).press('Enter')
   await bench.getByRole('textbox', { name: 'Set 1 reps', exact: true }).fill('8')
@@ -82,12 +82,12 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
   await expect(timer).toContainText(/1:(29|30)/)
   await shot(page, 'workout-logging')
   await page.clock.fastForward('01:31')
-  await expect(page.getByText('Rest over, time for your next set')).toBeVisible()
+  await expect(page.getByText('Rest over', { exact: true })).toBeVisible()
   await page.clock.resume() // let the rest of the app's timers run normally again
 
   // Only set 1 is ticked; finishing confirms the unticked ones get dropped.
-  page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Finish' }).tap()
+  await confirmSheet(page, 'Finish')
   await expect(page.getByRole('heading', { level: 1, name: 'Push' })).toBeVisible()
   await expect(page.getByText('Duration')).toBeVisible()
   await page.getByRole('link', { name: 'Done' }).tap()
@@ -99,12 +99,12 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
   await bench.getByRole('button', { name: 'Increase Set 1 weight' }).tap()
   await expect(bench.getByRole('textbox', { name: 'Set 1 weight', exact: true })).toHaveValue('82.5')
   await bench.getByRole('button', { name: 'Complete set 1' }).tap()
-  await expect(page.getByRole('status').filter({ hasText: 'New PR!' })).toContainText('Heaviest weight')
+  await expect(page.getByRole('status').filter({ hasText: 'New PR' })).toContainText('Heaviest weight')
   await expect(bench.getByLabel('PR', { exact: true })).toBeVisible()
   await shot(page, 'workout-pr')
 
-  page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Finish' }).tap()
+  await confirmSheet(page, 'Finish')
   await expect(page.getByRole('heading', { name: 'New PR' })).toBeVisible()
   await shot(page, 'workout-summary')
 

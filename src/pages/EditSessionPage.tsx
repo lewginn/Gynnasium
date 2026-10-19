@@ -9,6 +9,7 @@ import { addSessionExercise, discardSession, loadSession, saveSessionEdits } fro
 import { useSettings } from '../db/settings'
 import { syncNow } from '../sync'
 import { formatDay } from '../lib/format'
+import { useConfirm } from '../state/confirm'
 
 /**
  * Editing a finished workout: fix a typo, add a forgotten set, remove something, or delete the whole workout.
@@ -17,6 +18,7 @@ import { formatDay } from '../lib/format'
 export default function EditSessionPage() {
   const { sessionId = '' } = useParams()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const settings = useSettings()
   const detail = useLiveQuery(async () => (await loadSession(sessionId)) ?? null, [sessionId])
   const library = useLiveQuery(() => db.exercises.toArray())
@@ -35,7 +37,7 @@ export default function EditSessionPage() {
 
   const save = async () => {
     const pending = exercises.flatMap((e) => e.sets).filter((s) => !s.completedAt).length
-    if (pending > 0 && !confirm(`${pending} sets aren't ticked off and won't be saved. Save anyway?`)) return
+    if (pending > 0 && !(await confirm({ title: 'Save changes?', message: `${pending} unticked ${pending === 1 ? 'set is' : 'sets are'} left out.`, action: 'Save' }))) return
     const kept = await saveSessionEdits(session.id)
     void syncNow()
     navigate(kept ? `/history/${session.id}` : '/progress', { replace: true })
@@ -74,7 +76,7 @@ export default function EditSessionPage() {
       <button
         className="btn btn-danger-text btn-block btn-sm"
         onClick={async () => {
-          if (!confirm(`Delete this ${session.name} workout? This can't be undone.`)) return
+          if (!(await confirm({ title: `Delete ${session.name}?`, message: 'This can’t be undone.', action: 'Delete workout', destructive: true }))) return
           await discardSession(session.id)
           navigate('/progress', { replace: true })
         }}

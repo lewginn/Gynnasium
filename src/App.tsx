@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import Icon, { type IconName } from './components/Icon'
+import { ChartLine, Dumbbell, House, ListChecks, Settings } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
 import WorkoutBar from './components/WorkoutBar'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
@@ -14,12 +14,12 @@ import TodayPage from './pages/TodayPage'
 import WorkoutPage from './pages/WorkoutPage'
 import { useSync } from './sync'
 
-const NAV: { to: string; label: string; icon: IconName }[] = [
-  { to: '/', label: 'Today', icon: 'today' },
-  { to: '/plans', label: 'Plans', icon: 'plans' },
-  { to: '/exercises', label: 'Exercises', icon: 'dumbbell' },
-  { to: '/progress', label: 'Progress', icon: 'chart' },
-  { to: '/settings', label: 'Settings', icon: 'gear' },
+const NAV = [
+  { to: '/', label: 'Today', Icon: House },
+  { to: '/plans', label: 'Plans', Icon: ListChecks },
+  { to: '/exercises', label: 'Exercises', Icon: Dumbbell },
+  { to: '/progress', label: 'Progress', Icon: ChartLine },
+  { to: '/settings', label: 'Settings', Icon: Settings },
 ]
 
 export default function App() {
@@ -52,9 +52,9 @@ export default function App() {
       {!inWorkout && path !== '/' && <WorkoutBar />}
       {!inWorkout && (
         <nav className="bottom-nav glass" aria-label="Main">
-          {NAV.map(({ to, label, icon }) => (
+          {NAV.map(({ to, label, Icon }) => (
             <NavLink key={to} to={to} end={to === '/'} className="nav-item">
-              <Icon name={icon} size={24} />
+              <Icon size={24} aria-hidden />
               {label}
             </NavLink>
           ))}

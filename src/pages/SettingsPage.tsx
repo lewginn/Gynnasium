@@ -26,7 +26,7 @@ export default function SettingsPage() {
       </section>
       <section className="card">
         <label className="field">
-          <span>Default rest timer</span>
+          <span>Default rest</span>
           <select
             className="input"
             value={settings.defaultRestSec}
@@ -45,7 +45,7 @@ export default function SettingsPage() {
         <label className="toggle">
           <span>
             Log RPE
-            <span className="muted small block">How hard a set felt, 1–10. RPE 8 means you had about 2 reps left.</span>
+            <span className="muted small block">Rate how hard each set felt, 1–10.</span>
           </span>
           <input type="checkbox" checked={settings.showRpe} onChange={(e) => updateSettings({ showRpe: e.target.checked })} />
         </label>

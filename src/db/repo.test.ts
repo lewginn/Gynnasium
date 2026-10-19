@@ -13,6 +13,7 @@ import {
   discardSession,
   exerciseHistory,
   finishSession,
+  finishedSessionStarts,
   getActiveSession,
   loadExercise,
   loadPlan,
@@ -26,6 +27,7 @@ import {
   swapSessionExercise,
   uncompleteSet,
   updateSet,
+  volumeSinceKg,
 } from './repo'
 
 const exercise = async (id: string) => (await db.exercises.get(id))!
@@ -255,3 +257,26 @@ describe('reordering and editing workouts', () => {
     expect(await loadSession(sessionId)).toBeNull()
   })
 })
+
+describe('today', () => {
+  it('weekly volume counts weight × reps sets only, not discarded or bodyweight ones', async () => {
+    const since = Date.now() - 1
+    await logWorkout('Barbell_Squat', [
+      [100, 5],
+      [100, 5],
+    ])
+    await setLoggingOverride('Barbell_Bench_Press_-_Medium_Grip', 'bodyweight')
+    await logWorkout('Barbell_Bench_Press_-_Medium_Grip', [[20, 10]])
+
+    const discarded = await startSession()
+    const seId = await addSessionExercise(discarded, await exercise('Barbell_Squat'))
+    const [set] = (await loadSession(discarded))!.exercises.find((e) => e.se.id === seId)!.sets
+    await updateSet(set.id, { weightKg: 200, reps: 5 })
+    await completeSet(set.id)
+    await discardSession(discarded)
+
+    expect(await volumeSinceKg(since)).toBe(1000)
+    expect(await finishedSessionStarts()).toHaveLength(2)
+  })
+})
+

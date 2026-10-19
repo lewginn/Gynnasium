@@ -14,11 +14,13 @@ import { formatClock } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
 import { suggestExercises } from '../lib/suggest'
 import type { Exercise } from '../lib/types'
+import { useConfirm } from '../state/confirm'
 import { restTimer, useNow } from '../state/restTimer'
 import { useWakeLock } from '../state/wakeLock'
 
 export default function WorkoutPage() {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const settings = useSettings()
   const sessionId = useLiveQuery(async () => (await getActiveSession())?.id ?? null)
   const detail = useLiveQuery(async () => (sessionId ? await loadSession(sessionId) : null), [sessionId])
@@ -53,17 +55,23 @@ export default function WorkoutPage() {
   const restFor = (exercise: Exercise) => plan?.restByExercise.get(exercise.id) ?? exercise.defaultRestSec ?? settings.defaultRestSec
 
   const finish = async () => {
-    if (doneSets === 0 && !confirm('No sets ticked off yet. Finish and discard this workout?')) return
     const pendingSets = exercises.flatMap((e) => e.sets).filter((s) => !s.completedAt).length
-    if (doneSets > 0 && pendingSets > 0 && !confirm(`${pendingSets} sets aren't ticked off. Finish anyway? They won't be saved.`)) return
+    if (doneSets === 0) {
+      const ok = await confirm({ title: 'Nothing ticked off', message: 'Finishing now discards this workout.', action: 'Discard workout', destructive: true })
+      if (!ok) return
+    } else if (pendingSets > 0) {
+      const ok = await confirm({ title: 'Finish workout?', message: `${pendingSets} unticked ${pendingSets === 1 ? 'set is' : 'sets are'} left out.`, action: 'Finish' })
+      if (!ok) return
+    }
     restTimer.dismiss()
     const kept = await finishSession(session.id)
     void syncNow() // back it up straight away if online
     navigate(kept ? `/history/${session.id}` : '/', { replace: true })
   }
 
-  const discard = async () => {
-    if (!confirm('Discard this workout? Nothing from it will be saved.')) return
+  // The leave sheet explains discarding already, so it skips the second ask.
+  const discard = async (ask = true) => {
+    if (ask && !(await confirm({ title: 'Discard workout?', message: 'Nothing from it is saved.', action: 'Discard workout', destructive: true }))) return
     restTimer.dismiss()
     await discardSession(session.id)
     navigate('/', { replace: true })
@@ -117,7 +125,7 @@ export default function WorkoutPage() {
       <button className="btn btn-block" onClick={() => setPicking(true)}>
         <Plus size={20} aria-hidden /> Add exercise
       </button>
-      <button className="btn btn-danger-text btn-block btn-sm" onClick={discard}>
+      <button className="btn btn-danger-text btn-block btn-sm" onClick={() => discard()}>
         Discard workout
       </button>
 
@@ -128,10 +136,10 @@ export default function WorkoutPage() {
               <Pause size={20} aria-hidden />
               <span>
                 Keep it for later
-                <span className="muted small block">Carry on any time from Today. Nothing is lost.</span>
+                <span className="muted small block">Pick it up again from Today.</span>
               </span>
             </button>
-            <button className="menu-item danger" onClick={discard}>
+            <button className="menu-item danger" onClick={() => discard(false)}>
               <Trash2 size={20} aria-hidden />
               <span>
                 Discard workout
@@ -146,7 +154,7 @@ export default function WorkoutPage() {
         <div className="toast" role="status">
           <Trophy size={24} aria-hidden />
           <span>
-            <strong className="block">New PR!</strong>
+            <strong className="block">New PR</strong>
             <span className="small">{prToast}</span>
           </span>
         </div>

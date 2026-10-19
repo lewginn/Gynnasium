@@ -77,7 +77,7 @@ export default function ProgressPage() {
       {prs && prs.length > 0 && (
         <section className="card pr-card">
           <h2>
-            <Trophy size={20} aria-hidden /> Recent PRs
+            <Trophy size={14} aria-hidden className="pr-mark" /> Recent PRs
           </h2>
           <ul className="plain-list">
             {prs.map(({ set, exercise }) => (

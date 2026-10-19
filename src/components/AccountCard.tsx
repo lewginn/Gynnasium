@@ -1,4 +1,5 @@
 import { CloudCheck, CloudOff, LoaderCircle, RefreshCw, TriangleAlert } from 'lucide-react'
+import { useConfirm } from '../state/confirm'
 import { useNow } from '../state/restTimer'
 import { signOut, syncNow, useSync } from '../sync'
 
@@ -25,6 +26,16 @@ export default function AccountCard() {
 function SignedIn() {
   const sync = useSync()
   const now = useNow(30_000)
+  const confirm = useConfirm()
+
+  async function onSignOut() {
+    const ok = await confirm({
+      title: 'Sign out?',
+      message: 'Anything not backed up yet stays on this phone for when you sign back in.',
+      action: 'Sign out',
+    })
+    if (ok) await signOut()
+  }
 
   return (
     <div className="stack-sm">
@@ -54,10 +65,7 @@ function SignedIn() {
         <button className="btn btn-sm grow" onClick={() => syncNow()} disabled={sync.status === 'syncing'}>
           <RefreshCw size={16} aria-hidden /> Back up now
         </button>
-        <button
-          className="btn btn-sm btn-danger-text"
-          onClick={() => confirm('Sign out? Anything not backed up yet stays on this phone for when you sign back in.') && signOut()}
-        >
+        <button className="btn btn-sm btn-danger-text" onClick={onSignOut}>
           Sign out
         </button>
       </div>

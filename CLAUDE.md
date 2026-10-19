@@ -1,6 +1,6 @@
 # Gynnasium — notes for Claude
 
-Personal gym tracker, installable web app first (Android Chrome is the main target), native wrapper (Capacitor) later.
+Personal gym tracker, used on the owner's iPhone: **Safari is the main target** (also added to the home screen), Chrome second. Installable web app first, native wrapper (Capacitor) later.
 The owner tests and signs off on PRs; Claude writes the code.
 
 ## Principles
@@ -10,13 +10,15 @@ The owner tests and signs off on PRs; Claude writes the code.
 - **Weights are stored in kg** (`weightKg`), converted only for display via `src/lib/units.ts`.
 
 ## Design
-The UI follows Apple's iOS design kit (HIG, iOS 26), even in the browser and on Android.
-- Colours are iOS semantic colour tokens in `src/index.css` (`--label`, `--label-2`, `--cell`, `--bg`, `--fill-3`, `--separator`, `--tint`, `--pr`); light/dark follow the system. Don't hard-code colours.
-- Two deliberate departures from Apple's values, both for WCAG AA (the axe test in `e2e/qa.spec.ts` enforces it): the light-mode tint is #1b7032, and `--label-2` is 76% rather than 60%.
-- Lists are inset grouped (`.list` / `.list-row`, `.section-label` for headers, `.section-title` for Fitness-style titles); cards are `.card`. Buttons are capsules: `.btn` (gray: tinted text on a fill), `.btn-primary` (filled). Sheets float inset with a grabber.
-- Numbers (weights, reps, timers, stats) use SF Pro Rounded with tabular figures; add new numeric classes to the `ui-rounded` rule. PRs are yellow (`--pr`) with black text.
-- Glass (`.glass`) is for floating chrome only: the tab bar, the docked `WorkoutBar`, the rest timer, back buttons.
-- Tab bar glyphs are SF Symbols-style SVGs in `src/components/Icon.tsx`; content icons use lucide.
+The app lives on an iPhone, so it speaks iOS: semantic colours that follow light/dark, iOS text sizes, grouped lists, sheets. Imitating Apple is not the goal; being clear one-handed mid-set is. Build everything from the tokens in `src/index.css`.
+- **Colour:** tokens only (`--label`, `--label-2`, `--cell`, `--bg`, `--fill-3`, `--separator`, `--tint`, `--pr`, `--on-pr`, …). No literal colours in rules. For WCAG AA (enforced by the axe test in `e2e/qa.spec.ts`), the light tint is #1b7032 and `--label-2` is 76%, both darker than Apple's values.
+- **Type:** iOS sizes (body 17, subhead 15, label 13, large title 34). One label style: 13px semibold, secondary colour, sentence case. No uppercase, no letter-spacing on labels. Numbers use `--font-numeric` (SF Pro Rounded where available) with tabular figures.
+- **Shape:** three radii, `--radius-s` (controls), `--radius-m` (rows inside cards), `--radius-l` (cards, sheets, the rest bar). Capsules only for buttons, chips, switches, progress bars and the floating bars.
+- **Surfaces:** no gradients or decorative shadows. Glass (`.glass`) only on bars that float over content: the tab bar and `WorkoutBar`; the rest bar uses the same material.
+- **Components:** lists are `.list` / `.list-row` with `.section-label` headers; cards are `.card`; buttons `.btn` (tint on gray) and `.btn-primary`. PRs are always `.pr-mark` (trophy on yellow). Icons are lucide only.
+- **Asking before something irreversible:** `useConfirm()` (`src/state/confirm.ts`), which opens a sheet. Never `window.confirm`. The action button says what it does ("Delete plan"), never "OK"; don't ask twice for the same thing.
+- **Copy:** plain and short. No exclamation marks, no reassurance ("Nothing is lost"), no roadmap ("coming next"), no invented numbers (estimates the app can't back up). One name per thing across screens.
+- **Layout:** test at 390px wide (iPhone 15): the workout set grid is the tightest screen, including with RPE on. Today is a launchpad, in order: the hero (`.hero`: the workout in progress, else the up-next plan day with one big Start), This week (`lib/week.ts`), the latest PR while fresh, other days, recent workouts. On an iPhone the hero's Start button is visible without scrolling, with This week starting just below. Don't make Today's sections appear one by one: render once loaded, so buttons don't move under a thumb.
 - In a workout, the next set of the exercise you're on gets `.set-row.current`.
 
 ## Conventions
@@ -43,7 +45,8 @@ The UI follows Apple's iOS design kit (HIG, iOS 26), even in the browser and on 
 npm run lint && npm run typecheck && npm test
 PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e   # in cloud sessions; plain `npm run test:e2e` elsewhere
 ```
-E2E runs on an emulated Pixel 7 against the production build (so the service worker / offline mode is tested).
+E2E runs on an emulated iPhone 15 (viewport, touch, user agent) against the production build, so the service worker / offline mode is tested.
+The engine is Chromium, not WebKit, so Safari-only behaviour (e.g. no `navigator.vibrate`, audio needing a tap to unlock, `-webkit-` prefixes) isn't covered: check those by reading the code, and say so in the PR.
 Screenshots go to `test-results/screens/`.
 
 ## Workflow

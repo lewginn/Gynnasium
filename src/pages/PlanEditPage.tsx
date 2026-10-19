@@ -26,12 +26,14 @@ import { formatRest, formatTarget } from '../lib/format'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { KEY_MUSCLES, suggestExercises, weeklySetsByMuscle } from '../lib/suggest'
 import type { Exercise, Muscle, PlanExercise } from '../lib/types'
+import { useConfirm } from '../state/confirm'
 
 const REST_OPTIONS = [30, 45, 60, 75, 90, 120, 150, 180, 240, 300]
 
 export default function PlanEditPage() {
   const { planId = '' } = useParams()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const detail = useLiveQuery(async () => (await loadPlan(planId)) ?? null, [planId])
   const library = useLiveQuery(() => db.exercises.toArray())
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
@@ -117,7 +119,7 @@ export default function PlanEditPage() {
       <button
         className="btn btn-danger-text btn-block"
         onClick={async () => {
-          if (confirm(`Delete "${plan.name}"? Workouts you've logged are kept.`)) {
+          if (await confirm({ title: `Delete ${plan.name}?`, message: 'Workouts you’ve logged are kept.', action: 'Delete plan', destructive: true })) {
             await deletePlan(plan.id)
             navigate('/plans')
           }
@@ -168,6 +170,7 @@ function DayEditor({
   onStart: () => void
 }) {
   const { day, exercises } = dayDetail
+  const confirm = useConfirm()
   const [expanded, setExpanded] = useState<string | null>(null)
   const [editingFocus, setEditingFocus] = useState(false)
   const suggestions = useMemo(
@@ -237,7 +240,7 @@ function DayEditor({
       )}
       <button
         className="btn btn-danger-text btn-block btn-sm"
-        onClick={() => confirm(`Delete day "${day.name}"?`) && deletePlanDay(day.id)}
+        onClick={async () => (await confirm({ title: `Delete ${day.name}?`, action: 'Delete day', destructive: true })) && deletePlanDay(day.id)}
       >
         Delete day
       </button>
@@ -343,7 +346,7 @@ function WeeklyVolume({ days }: { days: PlanDetail['days'] }) {
   return (
     <section className="card" aria-label="Weekly sets per muscle">
       <h2>Weekly sets per muscle</h2>
-      <p className="muted small">If you do each day once a week. Around 10–20 hard sets per muscle is a common target for growth.</p>
+      <p className="muted small">Doing each day once a week. 10 or more hard sets per muscle (green) is a typical target.</p>
       <ul className="volume-bars">
         {KEY_MUSCLES.map((m) => {
           const sets = totals.get(m) ?? 0

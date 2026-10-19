@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { addExerciseToWorkout, addPushPullLegsPlan, exerciseCard, finishWorkout, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
+import { addExerciseToWorkout, addPushPullLegsPlan, confirmSheet, exerciseCard, finishWorkout, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 // Phase 1.5: bodyweight and timed exercises, reordering mid-workout, and editing finished workouts.
 
@@ -31,7 +31,7 @@ test('bodyweight: reps with optional added or assisted weight', async ({ page })
   await expect(pullups.getByText('Last time: BW × 8')).toBeVisible()
   await typeInto(setInput(pullups, 1, 'weight'), '10')
   await pullups.getByRole('button', { name: 'Complete set 1' }).tap()
-  await expect(page.getByRole('status').filter({ hasText: 'New PR!' })).toContainText('Heaviest weight')
+  await expect(page.getByRole('status').filter({ hasText: 'New PR' })).toContainText('Heaviest weight')
   await finishWorkout(page)
   await expect(page.getByRole('link', { name: 'Pullups' })).toContainText('+10kg × 8')
 
@@ -59,7 +59,7 @@ test('timed: seconds instead of reps, longest-hold PRs', async ({ page }) => {
   await addExerciseToWorkout(page, 'plank', /^Plank/)
   await plank.getByRole('button', { name: 'Increase Set 1 seconds' }).tap()
   await plank.getByRole('button', { name: 'Complete set 1' }).tap()
-  await expect(page.getByRole('status').filter({ hasText: 'New PR!' })).toContainText('Longest time')
+  await expect(page.getByRole('status').filter({ hasText: 'New PR' })).toContainText('Longest time')
   await shot(page, 'p15-timed')
 })
 
@@ -126,16 +126,16 @@ test('edit a finished workout: change, add, remove, then delete it', async ({ pa
   await legPress.getByRole('button', { name: 'Complete set 1' }).tap()
   await expect(page.getByRole('timer')).toHaveCount(0) // no rest timer when editing
   await shot(page, 'p15-edit')
-  page.once('dialog', (d) => d.accept()) // unticked leg press sets are dropped
   await page.getByRole('button', { name: 'Save' }).tap()
+  await confirmSheet(page, 'Save') // unticked leg press sets are dropped
 
   await expect(page.getByRole('link', { name: 'Barbell Squat' })).toContainText('100kg × 5 · 102.5kg × 5, 5')
   await expect(page.getByRole('link', { name: 'Leg Press' })).toContainText('200kg × 10')
 
   // Delete the whole workout.
   await page.getByRole('link', { name: 'Edit workout' }).tap()
-  page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Delete workout' }).tap()
+  await confirmSheet(page, 'Delete workout')
   await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible()
   await expect(page.getByText('No workouts yet')).toBeVisible()
 })
