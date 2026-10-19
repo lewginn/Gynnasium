@@ -568,6 +568,9 @@ svg {
 .menu-item.danger {
   color: var(--danger);
 }
+.menu-item .block {
+  font-weight: 400;
+}
 
 /* ---------- Bottom sheet */
 
@@ -769,27 +772,48 @@ svg {
   display: grid;
   gap: 8px;
 }
-.day-button {
+.day-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  padding: 14px;
+  align-items: stretch;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
+  overflow: hidden;
+}
+.day-row.next {
+  border-color: var(--accent);
+}
+.day-button {
+  flex: 1;
+  min-width: 0;
+  padding: 14px;
+  border: 0;
+  background: transparent;
   text-align: left;
   cursor: pointer;
 }
-.day-button svg {
+.day-button:active,
+.day-start:active:not(:disabled) {
+  background: var(--surface-3);
+}
+.day-start {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: transparent;
   color: var(--accent);
+  cursor: pointer;
 }
-.day-button.next {
-  border-color: var(--accent);
+.day-start:disabled {
+  opacity: 0.35;
 }
-.day-button:disabled {
-  opacity: 0.5;
+.preview-list {
+  margin: 0 0 16px;
+  padding-left: 1.4rem;
+  display: grid;
+  gap: 10px;
 }
 
 /* ---------- Workout */
@@ -811,6 +835,10 @@ svg {
 .workout-header h1 {
   font-size: 1.3rem;
   margin: 0;
+}
+.workout-header .icon-btn {
+  margin-left: -10px;
+  color: var(--text);
 }
 .workout-header .muted {
   font-variant-numeric: tabular-nums;

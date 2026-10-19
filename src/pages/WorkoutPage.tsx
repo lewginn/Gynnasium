@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowLeftRight, Check, EllipsisVertical, Info, Plus, Trash2, Trophy } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronLeft, EllipsisVertical, Info, Pause, Plus, Trash2, Trophy } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ExercisePicker from '../components/ExercisePicker'
@@ -52,6 +52,7 @@ export default function WorkoutPage() {
     return { day, restByExercise: new Map(pes.map((pe) => [pe.exerciseId, pe.restSec])) }
   }, [detail?.session.planDayId])
   const [picking, setPicking] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const [prToast, setPrToast] = useState<string | null>(null)
   const now = useNow(1000)
 
@@ -80,10 +81,20 @@ export default function WorkoutPage() {
     navigate(kept ? `/history/${session.id}` : '/', { replace: true })
   }
 
+  const discard = async () => {
+    if (!confirm('Discard this workout? Nothing from it will be saved.')) return
+    restTimer.dismiss()
+    await discardSession(session.id)
+    navigate('/', { replace: true })
+  }
+
   return (
     <div className="workout">
       <header className="workout-header">
-        <div>
+        <button className="icon-btn" aria-label="Leave workout" onClick={() => setLeaving(true)}>
+          <ChevronLeft size={26} />
+        </button>
+        <div className="grow">
           <h1>{session.name}</h1>
           <span className="muted small" aria-label="Elapsed time">
             {formatClock((now - session.startedAt) / 1000)} · {doneSets} {doneSets === 1 ? 'set' : 'sets'}
@@ -119,18 +130,30 @@ export default function WorkoutPage() {
       <button className="btn btn-block" onClick={() => setPicking(true)}>
         <Plus size={20} aria-hidden /> Add exercise
       </button>
-      <button
-        className="btn btn-danger-text btn-block btn-sm"
-        onClick={async () => {
-          if (confirm('Discard this workout? Nothing from it will be saved.')) {
-            restTimer.dismiss()
-            await discardSession(session.id)
-            navigate('/', { replace: true })
-          }
-        }}
-      >
+      <button className="btn btn-danger-text btn-block btn-sm" onClick={discard}>
         Discard workout
       </button>
+
+      {leaving && (
+        <Sheet title="Leave workout?" onClose={() => setLeaving(false)}>
+          <div className="menu-list">
+            <button className="menu-item" onClick={() => navigate('/')}>
+              <Pause size={20} aria-hidden />
+              <span>
+                Keep it for later
+                <span className="muted small block">Carry on any time from Today. Nothing is lost.</span>
+              </span>
+            </button>
+            <button className="menu-item danger" onClick={discard}>
+              <Trash2 size={20} aria-hidden />
+              <span>
+                Discard workout
+                <span className="muted small block">Delete it without saving anything.</span>
+              </span>
+            </button>
+          </div>
+        </Sheet>
+      )}
 
       {prToast && (
         <div className="toast" role="status">

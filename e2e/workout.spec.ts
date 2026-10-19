@@ -61,7 +61,7 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
 
   // Workout 1: set a baseline on bench.
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Today' }).tap()
-  await expect(page.getByRole('button', { name: 'Start Push' })).toContainText('Up next')
+  await expect(page.getByRole('button', { name: 'Push: view exercises' })).toContainText('Up next')
   await page.getByRole('button', { name: 'Start Push' }).tap()
   await expect(page.getByRole('heading', { level: 1, name: 'Push' })).toBeVisible()
 

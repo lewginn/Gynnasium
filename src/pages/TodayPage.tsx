@@ -1,10 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, Play, Plus } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import Sheet from '../components/Sheet'
 import { db } from '../db/db'
 import { alive, getActiveSession, loadPlan, recentSessions, startSession } from '../db/repo'
 import { unlockAudio } from '../lib/feedback'
-import { formatClock, formatDay } from '../lib/format'
+import { formatClock, formatDay, formatRest, repRange } from '../lib/format'
 import { useNow } from '../state/restTimer'
 
 export default function TodayPage() {
@@ -16,6 +18,8 @@ export default function TodayPage() {
   })
   const recent = useLiveQuery(() => recentSessions(5))
   const now = useNow(active ? 1000 : null)
+  const [previewDayId, setPreviewDayId] = useState<string | null>(null)
+  const preview = plan?.days.find((d) => d.day.id === previewDayId)
 
   // Suggest the day after the one you did last.
   const lastDayId = recent?.find((s) => s.planDayId && plan?.days.some((d) => d.day.id === s.planDayId))?.planDayId
@@ -55,27 +59,27 @@ export default function TodayPage() {
           ) : (
             <ul className="day-list">
               {plan.days.map(({ day, exercises }) => (
-                <li key={day.id}>
+                <li key={day.id} className={`day-row ${day.id === nextDayId ? 'next' : ''}`}>
+                  <button className="day-button" onClick={() => setPreviewDayId(day.id)} aria-label={`${day.name}: view exercises`}>
+                    <span className="list-title">
+                      {day.name} {day.id === nextDayId && <span className="badge">Up next</span>}
+                    </span>
+                    <span className="list-meta">
+                      {exercises.length === 0
+                        ? 'No exercises yet'
+                        : `${exercises.length} exercises · ${exercises
+                            .slice(0, 2)
+                            .map((e) => e.exercise.name)
+                            .join(', ')}${exercises.length > 2 ? '…' : ''}`}
+                    </span>
+                  </button>
                   <button
-                    className={`day-button ${day.id === nextDayId ? 'next' : ''}`}
+                    className="day-start"
                     onClick={() => start(day.id)}
                     disabled={exercises.length === 0}
                     aria-label={`Start ${day.name}`}
                   >
-                    <span>
-                      <span className="list-title">
-                        {day.name} {day.id === nextDayId && <span className="badge">Up next</span>}
-                      </span>
-                      <span className="list-meta">
-                        {exercises.length === 0
-                          ? 'No exercises yet'
-                          : exercises
-                              .slice(0, 3)
-                              .map((e) => e.exercise.name)
-                              .join(', ') + (exercises.length > 3 ? ` +${exercises.length - 3}` : '')}
-                      </span>
-                    </span>
-                    <Play size={20} aria-hidden />
+                    <Play size={22} aria-hidden />
                   </button>
                 </li>
               ))}
@@ -98,6 +102,33 @@ export default function TodayPage() {
         <button className="btn btn-block" onClick={() => start()}>
           <Plus size={20} aria-hidden /> Start empty workout
         </button>
+      )}
+
+      {preview && (
+        <Sheet title={preview.day.name} onClose={() => setPreviewDayId(null)}>
+          {preview.exercises.length === 0 ? (
+            <p className="muted">No exercises on this day yet.</p>
+          ) : (
+            <ol className="preview-list">
+              {preview.exercises.map(({ pe, exercise }) => (
+                <li key={pe.id}>
+                  <span className="list-title">{exercise.name}</span>
+                  <span className="list-meta">
+                    {pe.targetSets} × {repRange(pe.repMin, pe.repMax)} · rest {formatRest(pe.restSec)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {preview.exercises.length > 0 && (
+            <button className="btn btn-primary btn-block" onClick={() => start(preview.day.id)}>
+              <Play size={18} aria-hidden /> Start {preview.day.name}
+            </button>
+          )}
+          <Link to={`/plans/${plan!.plan.id}`} className="btn btn-block">
+            Edit plan
+          </Link>
+        </Sheet>
       )}
 
       {recent && recent.length > 0 && (

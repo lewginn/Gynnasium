@@ -223,6 +223,45 @@ test.describe('workouts', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Push' })).toBeVisible()
   })
 
+  test('look at a day without starting it; leave a workout and keep it or discard it', async ({ page }) => {
+    await waitForLibrary(page)
+    await addPushPullLegsPlan(page)
+    await nav(page, 'Today')
+
+    // Preview a day: no workout is started.
+    await page.getByRole('button', { name: 'Legs: view exercises' }).tap()
+    const preview = page.getByRole('dialog', { name: 'Legs' })
+    await expect(preview.getByText('Barbell Squat')).toBeVisible()
+    await expect(preview.getByText('4 × 5–8 · rest 2:30')).toBeVisible()
+    await shot(page, 'qa-day-preview')
+    await preview.getByRole('button', { name: 'Close', exact: true }).tap()
+    await expect(page.getByText('Workout in progress')).toHaveCount(0)
+
+    // Start from the preview.
+    await page.getByRole('button', { name: 'Legs: view exercises' }).tap()
+    await preview.getByRole('button', { name: 'Start Legs' }).tap()
+    await expect(page.getByRole('heading', { level: 1, name: 'Legs' })).toBeVisible()
+    await exerciseCard(page, 'Barbell Squat').getByRole('button', { name: 'Complete set 1' }).tap()
+
+    // Leave and keep it: Today offers to resume, with the ticked set intact.
+    await page.getByRole('button', { name: 'Leave workout' }).tap()
+    await shot(page, 'qa-leave-workout')
+    await page.getByRole('button', { name: /Keep it for later/ }).tap()
+    await expect(page.getByText('Workout in progress')).toBeVisible()
+    await nav(page, 'Plans') // the rest of the app is usable meanwhile
+    await nav(page, 'Today')
+    await page.getByRole('link', { name: /Resume/ }).tap()
+    await expect(exerciseCard(page, 'Barbell Squat').getByRole('button', { name: 'Undo set 1' })).toBeVisible()
+
+    // Leave and discard: nothing saved.
+    await page.getByRole('button', { name: 'Leave workout' }).tap()
+    page.once('dialog', (d) => d.accept())
+    await page.getByRole('button', { name: /Discard workout/ }).last().tap()
+    await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
+    await expect(page.getByText('Workout in progress')).toHaveCount(0)
+    await expect(page.getByText('Recent workouts')).toHaveCount(0)
+  })
+
   test('"up next" moves through the plan days in order', async ({ page }) => {
     await waitForLibrary(page)
     await addPushPullLegsPlan(page)
@@ -232,12 +271,12 @@ test.describe('workouts', () => {
       ['Pull', 'Pullups', 'Legs'],
       ['Legs', 'Barbell Squat', 'Push'],
     ]) {
-      await expect(page.getByRole('button', { name: `Start ${day}` })).toContainText('Up next')
+      await expect(page.getByRole('button', { name: `${day}: view exercises` })).toContainText('Up next')
       await page.getByRole('button', { name: `Start ${day}` }).tap()
       await exerciseCard(page, exercise).getByRole('button', { name: 'Complete set 1' }).tap()
       await finishWorkout(page)
       await page.getByRole('link', { name: 'Done' }).tap()
-      await expect(page.getByRole('button', { name: `Start ${next}` })).toContainText('Up next')
+      await expect(page.getByRole('button', { name: `${next}: view exercises` })).toContainText('Up next')
     }
     await expect(page.getByRole('heading', { name: 'Recent workouts' })).toBeVisible()
     await shot(page, 'qa-today-history')
