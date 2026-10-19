@@ -24,6 +24,7 @@
   --orange: #ff9500;
   --red: #ff3b30;
   --indigo: #5856d6;
+  --pr: #ffcc00; /* systemYellow: personal records */
 
   /* Liquid Glass, approximated: translucent, blurred, with a bright rim. */
   --glass: rgba(255, 255, 255, 0.72);
@@ -67,6 +68,7 @@
     --orange: #ff9f0a;
     --red: #ff453a;
     --indigo: #5e5ce6;
+    --pr: #ffd60a;
 
     --glass: rgba(36, 36, 40, 0.68);
     --glass-rim: rgba(255, 255, 255, 0.14);
@@ -666,10 +668,722 @@ label.row {
   color: var(--tint);
 }
 
+/* Numbers are the content of a gym app. SF Pro Rounded on Apple devices (as in Apple Fitness),
+   with tabular figures so values don't jitter as they change. */
+.num {
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+button.row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.row:active {
+  background: var(--cell-pressed);
+}
+.row-add {
+  flex: none;
+  color: var(--tint);
+}
+.icon-pr {
+  --icon-bg: var(--pr);
+  color: #000000;
+}
+
+.nav-trailing {
+  position: relative;
+  margin-left: auto;
+}
+.btn-nav {
+  width: auto;
+  min-height: 44px;
+  padding: 0 18px;
+}
+.btn-plain {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--tint);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-destructive {
+  color: var(--red);
+}
+.icon-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -8px 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tint);
+  cursor: pointer;
+}
+.icon-button:active {
+  background: var(--fill-3);
+}
+
+/* Today: workout in progress */
+.card-kicker {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--tint);
+}
+.hero-number {
+  font-size: 48px;
+  line-height: 54px;
+  font-weight: 700;
+}
+
+/* Stats */
+.stat-strip {
+  display: grid;
+  /* Volume gets the room: it's the one that reaches five digits. */
+  grid-template-columns: 1fr 1.3fr 0.7fr;
+  margin-bottom: 20px;
+  padding: 12px 0;
+  border-radius: var(--radius-group);
+  background: var(--cell);
+}
+.stat-strip > div {
+  min-width: 0;
+  padding: 0 14px;
+}
+.stat-strip > div + div {
+  border-left: 0.5px solid var(--separator);
+}
+.stat-strip dt,
+.stat-grid dt {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--label-2);
+}
+.stat-strip dd,
+.stat-grid dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.stat-strip dd small,
+.stat-grid dd small {
+  margin-left: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 28px;
+}
+.stat-grid > div {
+  padding: 14px 16px;
+  border-radius: var(--radius-group);
+  background: var(--cell);
+}
+.stat-grid dd {
+  font-size: 34px;
+  line-height: 41px;
+}
+.stat-grid .stat-pr {
+  background: var(--pr);
+}
+.stat-grid .stat-pr dt,
+.stat-grid .stat-pr dd {
+  color: #000000;
+}
+
+/* Workout: exercise cards */
+.ex-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ex-card {
+  border-radius: var(--radius-group);
+  background: var(--cell);
+}
+.ex-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 16px;
+  border: 0;
+  color: var(--label);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ex-collapsed:active {
+  background: var(--cell-pressed);
+}
+.ex-progress {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--fill-3);
+  color: var(--label-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+.ex-progress.complete {
+  background: var(--tint);
+  color: var(--on-tint);
+}
+.ex-name {
+  display: block;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.ex-meta {
+  display: block;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--label-2);
+}
+.ex-active {
+  padding: 16px 12px 6px;
+}
+.ex-active .ex-name {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+}
+.ex-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 4px 12px;
+}
+.ex-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 4px;
+}
+.btn-next {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  overflow: hidden;
+  font-size: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Set rows */
+.set-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--label);
+  font: inherit;
+  text-align: left;
+}
+button.set-row {
+  cursor: pointer;
+}
+button.set-row:active {
+  background: var(--fill-3);
+}
+.set-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--fill-3);
+  color: var(--label-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+.set-row.done .set-number {
+  background: color-mix(in srgb, var(--tint) 18%, transparent);
+  color: var(--tint);
+}
+.set-value {
+  margin-right: auto;
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.set-value small {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.set-times {
+  margin: 0 6px;
+  font-weight: 500;
+  color: var(--label-3);
+}
+.set-row.pending .set-value {
+  color: var(--label-3);
+}
+.set-rpe {
+  font-size: 15px;
+  color: var(--label-2);
+}
+.set-check {
+  display: grid;
+  color: var(--tint);
+}
+.pr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--pr);
+  color: #000000;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  animation: pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* The set you're about to do */
+.focus-set {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 14px 10px 10px;
+  border-radius: 18px;
+  background: var(--bg);
+}
+.focus-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 0 6px;
+}
+.focus-label {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--tint);
+}
+.focus-prev {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--label-2);
+}
+.focus-prev .num {
+  font-weight: 600;
+  color: var(--label);
+}
+.focus-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr;
+  gap: 8px;
+}
+.focus-actions .btn {
+  padding: 0 8px;
+}
+.btn-log {
+  min-height: 56px;
+  font-size: 19px;
+}
+
+/* Stepper */
+.stepper {
+  display: grid;
+  grid-template-columns: 56px 1fr 56px;
+  align-items: center;
+  gap: 8px;
+  height: 64px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--cell);
+}
+.stepper:focus-within {
+  box-shadow: 0 0 0 2px var(--tint);
+}
+.stepper-button {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--fill-3);
+  color: var(--label);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 0.1s;
+}
+.stepper-button:active {
+  background: var(--fill);
+  transform: scale(0.92);
+}
+.stepper-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+.stepper-value input {
+  min-width: 1ch;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--label);
+  font-size: 34px; /* well above 16px, so no zoom on focus */
+  line-height: 40px;
+  font-weight: 700;
+  text-align: center;
+  field-sizing: content;
+}
+@supports not (field-sizing: content) {
+  .stepper-value input {
+    width: 4.2ch;
+  }
+}
+.stepper-unit {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+
+.rpe-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px;
+}
+.rpe-label {
+  margin-right: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--label-2);
+}
+.rpe-row .chip {
+  flex: 1;
+  padding: 0;
+  background: var(--cell);
+}
+.rpe-row .chip[aria-checked='true'] {
+  background: var(--tint);
+  color: var(--on-tint);
+  font-weight: 700;
+}
+
+/* Rest timer: a floating Live Activity-style pill, where the tab bar would be. */
+.rest-pill {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: var(--tab-gap);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 480px;
+  height: var(--tab-h);
+  margin: 0 auto;
+  padding: 0 9px 0 13px;
+  border-radius: 999px;
+  animation: rise 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+.rest-ring {
+  flex: none;
+  transform: rotate(-90deg);
+}
+.rest-ring circle {
+  fill: none;
+  stroke: var(--fill);
+  stroke-width: 4;
+}
+.rest-ring circle + circle {
+  stroke: var(--tint);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear;
+}
+.rest-text {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+}
+.rest-label {
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--label-2);
+}
+.rest-time {
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 700;
+}
+.rest-button {
+  min-width: 48px;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill-3);
+  color: var(--label);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rest-skip {
+  color: var(--tint);
+}
+.rest-pill.done {
+  background: var(--tint);
+  color: var(--on-tint);
+  animation: nudge 0.6s ease-in-out 2;
+}
+.rest-pill.done .rest-label {
+  color: inherit;
+  opacity: 0.8;
+}
+.rest-pill.done .rest-button {
+  background: rgba(255, 255, 255, 0.25);
+  color: inherit;
+}
+.rest-pill.done .rest-ring circle {
+  stroke: currentColor;
+}
+@keyframes rise {
+  from {
+    transform: translateY(140%);
+  }
+}
+@keyframes nudge {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+/* A workout in progress, docked above the tab bar. */
+.workout-bar {
+  position: fixed;
+  left: 24px;
+  right: 24px;
+  bottom: calc(var(--tab-gap) + var(--tab-h) + 8px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 464px;
+  height: 56px;
+  margin: 0 auto;
+  padding: 0 16px 0 12px;
+  border-radius: 999px;
+  color: var(--label);
+  text-decoration: none;
+}
+.workout-bar .row-icon {
+  border-radius: 50%;
+  color: var(--on-tint);
+}
+.workout-bar-title {
+  display: block;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.workout-bar-meta {
+  display: block;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--tint);
+}
+.app:has(.workout-bar) .content {
+  padding-bottom: calc(var(--tab-h) + var(--tab-gap) + 88px);
+}
+
+/* PR toast */
+.toast {
+  position: fixed;
+  /* Below the nav bar, so it never covers Finish. */
+  top: calc(env(safe-area-inset-top) + 56px);
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: 24px;
+  animation: drop 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.toast-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--pr);
+  color: #000000;
+}
+.toast-title {
+  display: block;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 700;
+}
+.toast-body {
+  min-width: 0;
+}
+.toast-detail {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--label-2);
+}
+@keyframes drop {
+  from {
+    transform: translateY(-140%);
+  }
+}
+
+/* Action sheet */
+.sheet {
+  inset: auto 0 0;
+  width: auto;
+  max-width: 480px;
+  max-height: none;
+  margin: 0 auto;
+  padding: 0 8px calc(env(safe-area-inset-bottom) + 8px);
+  border: 0;
+  background: transparent;
+  color: var(--label);
+}
+.sheet[open] {
+  animation: rise 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.sheet::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+.sheet-group {
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--cell);
+}
+.sheet-header {
+  padding: 14px 16px;
+  text-align: center;
+}
+.sheet-title {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.sheet-message {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--label-2);
+}
+.sheet-action {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-top: 0.5px solid var(--separator);
+  background: transparent;
+  color: var(--tint);
+  font: inherit;
+  font-size: 19px;
+  cursor: pointer;
+}
+.sheet-action:active {
+  background: var(--fill-3);
+}
+.sheet-action.destructive {
+  color: var(--red);
+}
+.sheet-cancel {
+  border: 0;
+  border-radius: 24px;
+  background: var(--cell);
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
+    animation: none !important;
     transition: none !important;
   }
 }

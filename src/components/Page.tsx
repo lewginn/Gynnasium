@@ -8,11 +8,14 @@ type Props = {
   /** Small caps line above the large title, like the date in Apple Fitness. */
   eyebrow?: string
   back?: { to: string; label: string }
+  /** Bar items, for screens that need something other than a back button. */
+  leading?: ReactNode
+  trailing?: ReactNode
   children?: ReactNode
 }
 
 /** iOS navigation bar with a large title that collapses into the bar as you scroll. */
-export default function Page({ title, eyebrow, back, children }: Props) {
+export default function Page({ title, eyebrow, back, leading, trailing, children }: Props) {
   const barRef = useRef<HTMLElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [collapsed, setCollapsed] = useState(false)
@@ -37,11 +40,13 @@ export default function Page({ title, eyebrow, back, children }: Props) {
             <Icon name="chevronLeft" size={22} />
           </Link>
         )}
+        {leading}
         {title && (
           <div className="nav-title" aria-hidden="true">
             {title}
           </div>
         )}
+        {trailing && <div className="nav-trailing">{trailing}</div>}
       </header>
       {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       {title && (

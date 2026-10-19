@@ -17,6 +17,8 @@ The UI follows Apple's iOS design kit (HIG, iOS 26), even in the browser and on 
 - Controls: `<Switch>` and `<PopUpSelect>` (`src/components/controls.tsx`), `.segmented`, `.chip`, `.search`, capsule buttons `.btn-filled` / `.btn-gray`. Empty screens use `.empty` (ContentUnavailableView).
 - Icons come from `src/components/Icon.tsx`, drawn in the style of SF Symbols (SF Symbols can't be shipped on the web). Add new glyphs there on the 24×24 grid.
 - Type follows the iOS ramp: body 17px, subhead 15px, footnote 13px, large title 34px bold.
+- Numbers (weights, reps, timers, stats) use `.num`: SF Pro Rounded on Apple devices, tabular figures. PRs are gold (`--pr`).
+- Workout logger (`src/pages/WorkoutPage.tsx`, `src/components/workout/`): full-screen (no tab bar), one active exercise at a time, its next set as a focus card with `<Stepper>`s pre-filled by `suggestSet`, rest timer pill where the tab bar would be, and `WorkoutBar` docked above the tab bar when minimised. Confirmations use `<ActionSheet>`.
 
 ## Conventions
 - IDs are `crypto.randomUUID()` generated on the device; library exercises use their free-exercise-db string id.

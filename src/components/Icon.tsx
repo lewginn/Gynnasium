@@ -59,7 +59,21 @@ const ICONS = {
   flame: (
     <path d="M12.6 1.8c.4 3.1 5.9 5.6 5.9 11.7a6.5 6.5 0 0 1-13 0c0-2.9 1.4-4.9 2.9-6.2.2 2 1.1 3.4 2.5 3.6-.4-3.9.3-6.7 1.7-9.1z" />
   ),
+  star: (
+    <path d="M12 2.6l2.75 5.8 6.33.78-4.67 4.36 1.2 6.27L12 16.7l-5.61 3.11 1.2-6.27-4.67-4.36 6.33-.78z" strokeLinejoin="round" stroke="currentColor" strokeWidth="1.2" />
+  ),
   // Line glyphs.
+  chevronDown: <path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />,
+  plus: <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />,
+  minus: <path d="M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />,
+  ellipsis: (
+    <>
+      <circle cx="5.5" cy="12" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="18.5" cy="12" r="1.9" />
+    </>
+  ),
   chevronRight: <path d="M9.5 5.5L16 12l-6.5 6.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
   chevronLeft: <path d="M14.5 5L7.5 12l7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
   chevronUpDown: (
