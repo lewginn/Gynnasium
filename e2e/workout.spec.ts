@@ -106,9 +106,11 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
 
   // History and estimated 1RM on the exercise page.
   await page.getByRole('link', { name: 'Barbell Bench Press - Medium Grip' }).tap()
-  await expect(page.getByText('Best est. 1RM')).toBeVisible()
-  await expect(page.getByText('82.5kg × 8')).toBeVisible()
-  await expect(page.getByText('80kg × 8')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Barbell Bench Press - Medium Grip' })).toBeVisible()
+  const history = page.getByRole('region', { name: 'History' })
+  await expect(page.getByText('Best est. 1RM', { exact: true })).toBeVisible()
+  await expect(history.getByText('82.5kg × 8', { exact: true })).toBeVisible()
+  await expect(history.getByText('80kg × 8', { exact: true })).toBeVisible()
   await shot(page, 'exercise-history')
 })
 
@@ -172,6 +174,8 @@ test('kg/lb switch converts displayed weights', async ({ page }) => {
 
   await page.goto('/settings')
   await page.getByRole('radio', { name: 'lb' }).tap()
+  // Wait for the setting to save before the full page load.
+  await expect(page.getByRole('radio', { name: 'lb' })).toHaveAttribute('aria-checked', 'true')
   await page.goto('/workout')
   await expect(squat.getByRole('textbox', { name: 'Set 1 weight', exact: true })).toHaveValue('220.5')
   await squat.getByRole('button', { name: 'Increase Set 1 weight' }).tap()

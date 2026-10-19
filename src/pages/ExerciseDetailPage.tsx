@@ -61,8 +61,8 @@ export default function ExerciseDetailPage() {
         </div>
       )}
 
-      <section className="card">
-        <h2>History</h2>
+      <section className="card" aria-labelledby="history-heading">
+        <h2 id="history-heading">History</h2>
         {history && history.length > 0 ? (
           <ul className="history-list">
             {history.map(({ session, sets }) => (
