@@ -1,13 +1,14 @@
+import Icon from '../components/Icon'
+import Page from '../components/Page'
+
 export default function ProgressPage() {
   return (
-    <>
-      <header className="page-header">
-        <h1>Progress</h1>
-      </header>
-      <section className="card">
+    <Page title="Progress">
+      <section className="empty">
+        <Icon name="chart" size={52} />
         <h2>Nothing to show yet</h2>
-        <p className="muted">Once you log workouts, your estimated 1RM trends, PRs and body metrics appear here.</p>
+        <p>Once you log workouts, your estimated 1RM trends, PRs and body metrics appear here.</p>
       </section>
-    </>
+    </Page>
   )
 }

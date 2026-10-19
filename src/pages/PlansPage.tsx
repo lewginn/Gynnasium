@@ -1,13 +1,14 @@
+import Icon from '../components/Icon'
+import Page from '../components/Page'
+
 export default function PlansPage() {
   return (
-    <>
-      <header className="page-header">
-        <h1>Plans</h1>
-      </header>
-      <section className="card">
+    <Page title="Plans">
+      <section className="empty">
+        <Icon name="plans" size={52} />
         <h2>No plans yet</h2>
-        <p className="muted">The plan builder, with exercise suggestions for each day, is coming in the next update.</p>
+        <p>The plan builder, with exercise suggestions for each day, is coming in the next update.</p>
       </section>
-    </>
+    </Page>
   )
 }

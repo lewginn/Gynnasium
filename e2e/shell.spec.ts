@@ -71,3 +71,40 @@ test('fits a phone screen without sideways scrolling', async ({ page }) => {
     expect(overflow, path).toBeLessThanOrEqual(0)
   }
 })
+
+test('large title collapses into the nav bar on scroll', async ({ page }) => {
+  await page.goto('/exercises')
+  await expect.poll(async () => page.locator('.group li').count()).toBeGreaterThan(10)
+  const bar = page.locator('.nav-bar')
+  await expect(bar).toHaveAttribute('data-collapsed', 'false')
+  await page.mouse.wheel(0, 600)
+  await expect(bar).toHaveAttribute('data-collapsed', 'true')
+  await expect(bar.locator('.nav-title')).toHaveCSS('opacity', '1')
+  await page.screenshot({ path: 'test-results/screens/exercises-scrolled.png' })
+})
+
+test('RPE switch toggles and persists', async ({ page }) => {
+  await page.goto('/settings')
+  const rpe = page.getByRole('switch', { name: 'Log RPE' })
+  const before = await rpe.isChecked()
+  await page.getByText('Log RPE').tap()
+  await expect(rpe).toBeChecked({ checked: !before })
+  await page.reload()
+  await expect(rpe).toBeChecked({ checked: !before })
+})
+
+test.describe('dark mode', () => {
+  test.use({ colorScheme: 'dark' })
+
+  test('screens render in dark mode', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByText(/\d{3} exercises available offline/)).toBeVisible()
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(0, 0, 0)')
+    await page.screenshot({ path: 'test-results/screens/dark-today.png' })
+    for (const path of ['/exercises', '/settings', '/plans']) {
+      await page.goto(path)
+      await page.waitForLoadState('networkidle')
+      await page.screenshot({ path: `test-results/screens/dark-${path.slice(1)}.png` })
+    }
+  })
+})
