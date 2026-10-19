@@ -1,55 +1,85 @@
+/*
+ * Styled after Apple's iOS design kit (HIG, iOS 26): system colours, the Dynamic Type ramp at the
+ * default size, inset grouped lists, large titles, capsule controls and glass bars. Colour values
+ * are the iOS semantic colours, so light and dark mode follow the phone's setting.
+ */
 :root {
-  --bg: #0b0d10;
-  --surface: #15181d;
-  --surface-2: #1e232a;
-  --surface-3: #282e37;
-  --border: #2a3039;
-  --text: #f3f5f8;
-  --muted: #98a2b0;
-  --accent: #a3e635;
-  --accent-strong: #bef264;
-  --accent-text: #11200a;
-  --accent-soft: rgba(163, 230, 53, 0.14);
-  --badge-text: var(--accent);
-  --gold: #facc15;
-  --gold-soft: rgba(250, 204, 21, 0.14);
-  --danger: #f87171;
-  --warning: #fbbf24;
-  --radius: 16px;
-  --radius-sm: 12px;
-  --tap: 48px;
-  --nav-h: 64px;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  /* Accent: systemGreen. In light mode a shade darker than Apple's accessible variant (#248a3d), which
+     falls short of 4.5:1 on the gray fills; this one clears it on every background, fills included. */
+  --tint: #1b7032;
+  --on-tint: #ffffff;
+  --tint-soft: rgba(52, 199, 89, 0.14);
+  --switch-on: #34c759;
 
-  color-scheme: dark;
-  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.4;
-  color: var(--text);
+  --bg: #f2f2f7; /* systemGroupedBackground */
+  --cell: #ffffff; /* secondarySystemGroupedBackground */
+  --cell-pressed: #d1d1d6; /* systemGray4 */
+  --label: #000000;
+  /* secondaryLabel is 60% in iOS (about 3.4:1); 76% keeps the hierarchy and meets WCAG AA for small text. */
+  --label-2: rgba(60, 60, 67, 0.76);
+  --label-3: rgba(60, 60, 67, 0.3); /* tertiaryLabel */
+  --separator: rgba(60, 60, 67, 0.29);
+  --fill: rgba(120, 120, 128, 0.2); /* systemFill */
+  --fill-3: rgba(118, 118, 128, 0.12); /* tertiarySystemFill */
+  --segment-thumb: #ffffff;
+
+  --red: #ff3b30;
+  --red-text: #d70015; /* systemRed, accessible: legible as text on white */
+  --orange-text: #c93400;
+  /* systemYellow for personal records. Always with black text: it reads in light and dark. */
+  --pr: #ffcc00;
+  --pr-soft: rgba(255, 204, 0, 0.16);
+
+  /* Liquid Glass, approximated: translucent, blurred, with a bright rim. */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-rim: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+
+  --radius-group: 20px;
+  --radius-inner: 14px;
+  --tap: 48px;
+  --tab-h: 62px;
+  --tab-gap: max(12px, env(safe-area-inset-bottom));
+
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  font-size: 17px; /* Body */
+  line-height: 22px;
+  color: var(--label);
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #f3f4f6;
-    --surface: #ffffff;
-    --surface-2: #eef0f3;
-    --surface-3: #e2e5ea;
-    --border: #dde1e6;
-    --text: #0f1216;
-    --muted: #5b6470;
-    --accent: #4d7c0f;
-    --accent-strong: #3f6212;
-    --accent-text: #ffffff;
-    --accent-soft: rgba(77, 124, 15, 0.12);
-    --badge-text: #365314;
-    --gold: #b45309;
-    --gold-soft: rgba(217, 119, 6, 0.12);
-    --danger: #b91c1c;
-    --warning: #b45309;
-    --shadow: 0 10px 30px rgba(15, 18, 22, 0.12);
-    color-scheme: light;
+    --tint: #30d158;
+    --on-tint: #000000;
+    --tint-soft: rgba(48, 209, 88, 0.16);
+    --switch-on: #30d158;
+
+    --bg: #000000;
+    --cell: #1c1c1e;
+    --cell-pressed: #3a3a3c;
+    --label: #ffffff;
+    --label-2: rgba(235, 235, 245, 0.6);
+    --label-3: rgba(235, 235, 245, 0.3);
+    --separator: rgba(84, 84, 88, 0.65);
+    --fill: rgba(120, 120, 128, 0.36);
+    --fill-3: rgba(118, 118, 128, 0.24);
+    --segment-thumb: #636366;
+
+    --red: #ff453a;
+    --red-text: #ff6961;
+    --orange-text: #ffb340;
+    --pr: #ffd60a;
+    --pr-soft: rgba(255, 214, 10, 0.14);
+
+    --glass: rgba(36, 36, 40, 0.68);
+    --glass-rim: rgba(255, 255, 255, 0.14);
+    --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -66,26 +96,30 @@ body {
 h1,
 h2,
 h3 {
-  margin: 0 0 0.5rem;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  margin: 0 0 8px;
 }
 h1 {
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-size: 34px; /* Large Title */
+  line-height: 41px;
+  font-weight: 700;
+  letter-spacing: 0.37px;
+  overflow-wrap: anywhere;
 }
 h2 {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 20px; /* Title 3 */
+  line-height: 25px;
+  font-weight: 600;
 }
 h3 {
-  font-size: 1rem;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
 }
 p {
-  margin: 0 0 0.75rem;
+  margin: 0 0 12px;
 }
 a {
-  color: var(--accent);
+  color: var(--tint);
 }
 button {
   font: inherit;
@@ -94,14 +128,30 @@ button {
 svg {
   flex: none;
 }
+:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: 2px;
+}
 
 .sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Numbers are the content of a gym app: SF Pro Rounded on Apple devices (as in Apple Fitness),
+   with tabular figures so they don't jitter as they change. */
+.stat-value,
+.rest-time,
+.stepper-value input,
+.volume-value,
+.set-label,
+.hero-number {
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Layout */
@@ -113,29 +163,51 @@ svg {
 .content {
   max-width: 640px;
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px);
+  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(var(--tab-h) + var(--tab-gap) + 24px);
+}
+.app:has(.workout-bar) .content {
+  padding-bottom: calc(var(--tab-h) + var(--tab-gap) + 88px);
 }
 .content-workout {
   padding-top: 0;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 140px);
+  padding-bottom: calc(var(--tab-h) + var(--tab-gap) + 56px);
 }
 
+/* Large title, with room above it where the iOS nav bar would be. */
 .page-header {
-  margin-bottom: 1rem;
+  margin-bottom: 20px;
+  padding: 36px 4px 0;
 }
+.page-header h1 {
+  margin: 0;
+}
+.page-header > p {
+  margin: 2px 0 0;
+}
+/* Back button: a glass capsule, as in iOS 26. */
 .back-link {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   min-height: 44px;
-  margin: -6px 0 0 -8px;
-  padding: 0 12px 0 4px;
+  margin: -36px 0 8px -4px;
+  padding: 0 14px 0 8px;
   border: 0;
-  background: none;
-  color: var(--accent);
+  border-radius: 999px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 0 0 0.5px var(--glass-rim);
+  color: var(--label);
+  font-size: 17px;
+  font-weight: 500;
   text-decoration: none;
-  font-weight: 600;
   cursor: pointer;
+}
+.back-link:active {
+  transform: scale(0.96);
 }
 .title-row {
   display: flex;
@@ -165,50 +237,65 @@ svg {
   margin-bottom: 12px;
 }
 
+/* Section titles, like "Recent workouts" in Apple Fitness. */
 .section-title {
-  margin: 1.5rem 0 0.5rem;
+  margin: 28px 4px 10px;
+  font-size: 22px; /* Title 2 */
+  line-height: 28px;
+  font-weight: 700;
 }
+/* Grouped-list section header. */
 .section-label {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 1rem 0 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  margin: 20px 0 7px;
+  padding: 0 16px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--label-2);
+}
+.card .section-label {
+  padding: 0;
 }
 .eyebrow {
   display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
   text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+  color: var(--tint);
 }
 
 .card {
   display: block;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  margin-bottom: 16px;
   padding: 16px;
-  margin-bottom: 12px;
-  color: var(--text);
+  border-radius: var(--radius-group);
+  background: var(--cell);
+  color: var(--label);
   text-decoration: none;
 }
 .card.empty {
+  padding: 40px 24px;
   text-align: center;
-  padding: 24px 16px;
+}
+.card.empty h2 {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--label-2);
 }
 .small {
-  font-size: 0.85rem;
+  font-size: 15px; /* Subheadline */
+  line-height: 20px;
 }
 .block {
   display: block;
@@ -217,56 +304,59 @@ svg {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--warning);
   margin: 12px 0 0;
+  color: var(--orange-text);
 }
 
 .badge {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--badge-text);
-  font-size: 0.72rem;
+  background: var(--tint-soft);
+  color: var(--tint);
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 700;
   vertical-align: middle;
 }
 
 /* ---------- Buttons & inputs */
 
+/* Capsule buttons, as in iOS 26. The default is the gray style: tinted text on a fill. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: var(--tap);
-  padding: 0 18px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  font-weight: 650;
+  min-height: 50px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill-3);
+  color: var(--tint);
+  font-size: 17px;
+  font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   user-select: none;
+  transition: transform 0.15s;
 }
 .btn:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .btn:disabled {
-  opacity: 0.45;
+  background: var(--fill-3);
+  color: var(--label-3);
   cursor: not-allowed;
 }
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-  font-weight: 750;
+  background: var(--tint);
+  color: var(--on-tint);
 }
 .btn-sm {
-  min-height: 40px;
-  padding: 0 14px;
-  font-size: 0.9rem;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 15px;
 }
 .btn-block {
   display: flex;
@@ -275,8 +365,7 @@ svg {
 }
 .btn-danger-text {
   background: transparent;
-  border-color: transparent;
-  color: var(--danger);
+  color: var(--red-text);
 }
 
 .icon-btn {
@@ -287,43 +376,52 @@ svg {
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--muted);
+  color: var(--tint);
   cursor: pointer;
 }
 .icon-btn:active:not(:disabled) {
-  background: var(--surface-2);
+  background: var(--fill-3);
 }
 .icon-btn:disabled {
-  opacity: 0.3;
+  color: var(--label-3);
 }
 .icon-btn.danger {
-  color: var(--danger);
+  color: var(--red-text);
 }
 
 .input {
   width: 100%;
-  min-height: var(--tap);
+  min-height: 44px;
   padding: 0 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  border: 0;
+  border-radius: 12px;
+  background: var(--fill-3);
+  color: var(--label);
   font: inherit;
-  font-size: 16px; /* stops mobile browsers zooming on focus */
+  font-size: 17px; /* ≥16px stops mobile browsers zooming on focus */
+}
+select.input {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='16' viewBox='0 0 12 16' fill='none' stroke='%238e8e93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 6l4-4 4 4M2 10l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
 }
 .input:focus,
 .stepper-value input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  outline: 2px solid var(--tint);
+  outline-offset: -2px;
 }
 
 .field {
   display: grid;
   gap: 8px;
+  margin-bottom: 8px;
   font-weight: 600;
-  margin-bottom: 0.5rem;
 }
 
+/* Search field: a capsule with a magnifying glass. */
 .search-field {
   position: relative;
   margin-bottom: 10px;
@@ -333,25 +431,33 @@ svg {
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--muted);
+  color: var(--label-2);
 }
 .search-field .input {
   padding-left: 42px;
+  border-radius: 999px;
+}
+.search-field .input::placeholder {
+  color: var(--label-2);
 }
 
 .filters {
   display: grid;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
+/* Filter capsules */
 .chips {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
   margin: 0 -16px 4px;
-  padding: 2px 16px;
+  padding: 4px 16px;
+}
+.chips::-webkit-scrollbar {
+  display: none;
 }
 .chip-wrap {
   display: flex;
@@ -359,78 +465,131 @@ svg {
   gap: 8px;
 }
 .chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   flex: none;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 14px;
+  border: 0;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  background: var(--fill-3);
+  color: var(--label);
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
+}
+/* Stretch the hit area to 44px without making the capsule taller. */
+.chip::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
 }
 .chip-sm {
   min-height: 36px;
-  font-size: 0.9rem;
 }
 .chip[aria-pressed='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
-  font-weight: 700;
+  background: var(--tint);
+  color: var(--on-tint);
+  font-weight: 600;
 }
 .chip-add {
-  border-style: dashed;
-  color: var(--muted);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--separator);
+  color: var(--tint);
 }
 .day-tabs {
   margin-bottom: 12px;
 }
 
+/* Segmented control: a capsule track with a raised thumb on the selected segment. */
 .segmented {
   display: flex;
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  padding: 4px;
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: var(--fill-3);
 }
 .segmented-wrap {
   flex-wrap: wrap;
+  border-radius: 22px;
 }
 .segmented button {
+  position: relative;
+  isolation: isolate;
   flex: 1;
   min-height: 44px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 9px;
   background: transparent;
-  font-weight: 650;
-  cursor: pointer;
+  color: var(--label);
+  font-size: 15px;
+  font-weight: 500;
   white-space: nowrap;
-  padding: 0 10px;
+  cursor: pointer;
+}
+.segmented button::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  z-index: -1;
+  border-radius: 999px;
+  transition: background-color 0.2s;
 }
 .segmented button[aria-checked='true'] {
-  background: var(--accent);
-  color: var(--accent-text);
+  font-weight: 600;
+}
+.segmented button[aria-checked='true']::before {
+  background: var(--segment-thumb);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.12),
+    0 3px 1px rgba(0, 0, 0, 0.04);
 }
 
+/* Settings-style row with an iOS switch. */
 .toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  font-weight: 600;
-}
-.toggle input {
-  width: 24px;
-  height: 24px;
-  accent-color: var(--accent);
-  flex: none;
+  cursor: pointer;
 }
 .toggle .muted {
-  font-weight: 400;
   margin-top: 2px;
+  font-weight: 400;
+}
+.toggle input[type='checkbox'] {
+  position: relative;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  cursor: pointer;
+  transition: background-color 0.25s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.toggle input[type='checkbox']::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.15),
+    0 3px 1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.25s cubic-bezier(0.3, 0.7, 0.4, 1.15);
+}
+.toggle input[type='checkbox']:checked {
+  background: var(--switch-on);
+}
+.toggle input[type='checkbox']:checked::before {
+  transform: translateX(20px);
 }
 
 /* ---------- Stepper */
@@ -439,27 +598,27 @@ svg {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 36px;
   align-items: center;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
   min-width: 0;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--fill-3);
 }
 .stepper-btn {
   display: grid;
   place-items: center;
   height: 100%;
   border: 0;
+  border-radius: 999px;
   background: transparent;
-  color: var(--muted);
+  color: var(--tint);
   cursor: pointer;
+  touch-action: manipulation;
 }
 .stepper-btn:active:not(:disabled) {
-  color: var(--text);
-  background: var(--surface-3);
-  border-radius: var(--radius-sm);
+  background: var(--fill);
 }
 .stepper-btn:disabled {
-  opacity: 0.3;
+  color: var(--label-3);
 }
 .stepper-value {
   display: flex;
@@ -472,46 +631,56 @@ svg {
   min-width: 0;
   height: 36px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
+  color: var(--label);
+  font-size: 20px;
+  font-weight: 700;
   text-align: center;
-  font-size: 1.1rem;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
 }
 .stepper-unit {
-  font-size: 0.75rem;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--label-2);
 }
 
-/* ---------- Lists */
+/* ---------- Lists (inset grouped) */
 
 .list {
-  list-style: none;
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   padding: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
   overflow: hidden;
+  list-style: none;
+  border-radius: var(--radius-group);
+  background: var(--cell);
 }
-.list li + li {
-  border-top: 1px solid var(--border);
+/* Hairline separators, inset to line up with the text. */
+.list li {
+  position: relative;
+}
+.list li + li::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  z-index: 1;
+  border-top: 0.5px solid var(--separator);
 }
 .list-row {
   display: block;
   width: 100%;
-  padding: 12px 16px;
+  min-height: 52px;
+  padding: 11px 16px;
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--label);
+  font-size: 17px;
   text-align: left;
   text-decoration: none;
   cursor: pointer;
 }
 .list-row:active {
-  background: var(--surface-2);
+  background: var(--cell-pressed);
 }
 .list-row-split,
 .pick-row {
@@ -520,59 +689,78 @@ svg {
   justify-content: space-between;
   gap: 12px;
 }
+.list-row-split > svg {
+  color: var(--label-3);
+}
 .pick-icon {
-  color: var(--accent);
+  color: var(--tint);
 }
 .list-title {
   display: block;
-  font-weight: 650;
+  font-weight: 400;
 }
 .list-meta {
   display: block;
-  font-size: 0.85rem;
-  color: var(--muted);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--label-2);
 }
 .plain-list {
-  list-style: none;
+  display: grid;
+  gap: 12px;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 10px;
+  list-style: none;
 }
 .plain-list a {
-  color: var(--text);
+  color: var(--label);
 }
 
+/* Action list inside sheets: rows with a leading glyph, like an iOS context menu. */
 .menu-list {
   display: grid;
-  gap: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-group);
+  background: var(--cell);
 }
 .menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
   min-height: 52px;
-  padding: 0 12px;
+  padding: 10px 16px;
   border: 0;
-  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 600;
-  cursor: pointer;
+  color: var(--label);
+  font-size: 17px;
   text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.menu-item + .menu-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 0;
+  border-top: 0.5px solid var(--separator);
+}
+.menu-item > svg {
+  color: var(--tint);
 }
 .menu-item:active {
-  background: var(--surface-2);
+  background: var(--cell-pressed);
 }
-.menu-item.danger {
-  color: var(--danger);
+.menu-item.danger,
+.menu-item.danger > svg {
+  color: var(--red-text);
 }
 .menu-item .block {
   font-weight: 400;
 }
 
-/* ---------- Bottom sheet */
+/* ---------- Sheet: floats inset from the edges, as in iOS 26. */
 
 .sheet-backdrop {
   position: fixed;
@@ -581,20 +769,33 @@ svg {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  animation: fade-in 0.15s ease-out;
+  background: rgba(0, 0, 0, 0.35);
+  animation: fade-in 0.2s ease-out;
 }
 .sheet {
+  position: relative;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 640px;
+  width: calc(100% - 16px);
+  max-width: 624px;
   max-height: 85dvh;
-  background: var(--surface);
-  border-radius: 20px 20px 0 0;
-  box-shadow: var(--shadow);
-  padding-bottom: env(safe-area-inset-bottom);
-  animation: slide-up 0.2s ease-out;
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+  border-radius: 32px;
+  background: var(--bg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  animation: slide-up 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+/* Grabber */
+.sheet::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 36px;
+  height: 5px;
+  margin-left: -18px;
+  border-radius: 999px;
+  background: var(--fill);
 }
 .sheet-tall {
   height: 92dvh;
@@ -604,20 +805,32 @@ svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 8px 4px 16px;
+  padding: 18px 10px 4px 20px;
 }
 .sheet-header h2 {
   margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 600;
+}
+.sheet-header .icon-btn {
+  color: var(--label-2);
+  background: var(--fill-3);
+  width: 36px;
+  height: 36px;
+  margin: 4px;
 }
 .sheet-body {
   overflow-y: auto;
   padding: 8px 16px 16px;
   overscroll-behavior: contain;
 }
+.sheet-body .card {
+  background: var(--cell);
+}
 @keyframes slide-up {
   from {
-    transform: translateY(40px);
-    opacity: 0;
+    transform: translateY(100%);
   }
 }
 @keyframes fade-in {
@@ -637,22 +850,22 @@ svg {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--muted);
-  font-size: 0.85rem;
+  color: var(--label-2);
+  font-size: 15px;
   text-align: left;
   cursor: pointer;
 }
 
 .plan-exercises {
-  list-style: none;
-  margin: 0 0 12px;
-  padding: 0;
   display: grid;
   gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
 }
 .plan-exercise {
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  border-radius: var(--radius-inner);
+  background: var(--bg);
 }
 .plan-exercise-summary {
   display: flex;
@@ -660,6 +873,7 @@ svg {
   justify-content: space-between;
   gap: 8px;
   width: 100%;
+  min-height: 52px;
   padding: 12px 14px;
   border: 0;
   background: transparent;
@@ -667,8 +881,8 @@ svg {
   cursor: pointer;
 }
 .plan-exercise .chevron {
-  color: var(--muted);
-  transition: transform 0.15s;
+  color: var(--label-3);
+  transition: transform 0.2s;
 }
 .plan-exercise.expanded .chevron {
   transform: rotate(180deg);
@@ -683,12 +897,12 @@ svg {
   grid-template-columns: max-content 1fr;
   align-items: center;
   gap: 8px 12px;
-  font-size: 0.9rem;
-  color: var(--muted);
+  font-size: 15px;
+  color: var(--label-2);
 }
 .editor-grid .input {
   min-height: 44px;
-  background: var(--surface-3);
+  background: var(--cell);
 }
 
 .inline-suggestions {
@@ -699,60 +913,60 @@ svg {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 10px 12px;
+  min-height: 52px;
   margin-bottom: 6px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--radius-inner);
+  background: var(--tint-soft);
   text-align: left;
   cursor: pointer;
 }
 .suggestion svg {
-  color: var(--accent);
+  color: var(--tint);
 }
 .suggestion:active {
-  background: var(--accent-soft);
+  background: var(--fill);
 }
 
 .volume-bars {
-  list-style: none;
+  display: grid;
+  gap: 8px;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 6px;
+  list-style: none;
 }
 .volume-bars li {
   display: grid;
   grid-template-columns: 92px 1fr 28px;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: 15px;
 }
 .volume-label {
-  color: var(--muted);
+  color: var(--label-2);
 }
 .volume-track {
   height: 8px;
-  border-radius: 999px;
-  background: var(--surface-2);
   overflow: hidden;
+  border-radius: 999px;
+  background: var(--fill-3);
 }
 .volume-fill {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--muted);
+  background: var(--label-3);
 }
 .volume-fill.low {
-  background: var(--warning);
+  background: #ff9500;
 }
 .volume-fill.good {
-  background: var(--accent);
+  background: var(--tint);
 }
 .volume-value {
+  font-weight: 600;
   text-align: right;
-  font-variant-numeric: tabular-nums;
-  font-weight: 650;
 }
 
 /* ---------- Today */
@@ -762,31 +976,35 @@ svg {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-color: var(--accent);
-  background: linear-gradient(135deg, var(--accent-soft), transparent 70%), var(--surface);
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+.resume-card .muted {
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 .day-list {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
   display: grid;
   gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
 }
 .day-row {
   display: flex;
   align-items: stretch;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
   overflow: hidden;
+  border-radius: var(--radius-inner);
+  background: var(--bg);
 }
 .day-row.next {
-  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--tint);
 }
 .day-button {
   flex: 1;
   min-width: 0;
-  padding: 14px;
+  min-height: 60px;
+  padding: 12px 14px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -794,30 +1012,33 @@ svg {
 }
 .day-button:active,
 .day-start:active:not(:disabled) {
-  background: var(--surface-3);
+  background: var(--fill-3);
 }
 .day-start {
   display: grid;
   place-items: center;
   width: 64px;
   border: 0;
-  border-left: 1px solid var(--border);
   background: transparent;
-  color: var(--accent);
+  color: var(--tint);
   cursor: pointer;
 }
+.day-start svg {
+  fill: currentColor;
+}
 .day-start:disabled {
-  opacity: 0.35;
+  color: var(--label-3);
 }
 .preview-list {
-  margin: 0 0 16px;
-  padding-left: 1.4rem;
   display: grid;
   gap: 10px;
+  margin: 0 0 16px;
+  padding-left: 1.4rem;
 }
 
 /* ---------- Workout */
 
+/* Nav bar with the iOS scroll edge effect: content blurs out beneath it. */
 .workout-header {
   position: sticky;
   top: 0;
@@ -827,31 +1048,44 @@ svg {
   justify-content: space-between;
   gap: 12px;
   margin: 0 -16px 12px;
-  padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  padding: calc(env(safe-area-inset-top) + 8px) 16px 12px;
+  background: linear-gradient(var(--bg) 60%, color-mix(in srgb, var(--bg) 70%, transparent));
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
 }
 .workout-header h1 {
-  font-size: 1.3rem;
   margin: 0;
+  font-size: 22px;
+  line-height: 28px;
 }
 .workout-header .icon-btn {
-  margin-left: -10px;
-  color: var(--text);
+  margin-left: -6px;
+  background: var(--glass);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 0 0 0.5px var(--glass-rim);
+  color: var(--label);
 }
 .workout-header .muted {
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.workout-header .btn {
+  min-height: 44px;
 }
 
 .exercise-card {
-  padding: 14px 12px 6px;
+  padding: 16px 12px 6px;
 }
 .exercise-card h2 {
-  font-size: 1.05rem;
+  margin-left: 4px;
+  font-size: 20px;
+  line-height: 25px;
+  font-weight: 700;
 }
 .last-time {
-  margin: 0 0 10px;
+  margin: 0 4px 10px;
 }
 .hint {
   margin: -2px 4px 8px;
@@ -859,7 +1093,7 @@ svg {
 
 .set-grid {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 8px;
 }
 .set-grid-head,
@@ -875,120 +1109,148 @@ svg {
   gap: 4px;
 }
 .set-grid-head {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
   text-transform: uppercase;
-  color: var(--muted);
   text-align: center;
+  color: var(--label-2);
 }
 .set-row {
-  padding: 3px;
-  border-radius: var(--radius-sm);
-  transition: background 0.15s;
+  padding: 4px;
+  border-radius: var(--radius-inner);
+  transition: background-color 0.2s;
+}
+/* The set you're on: lifted onto the page background, so your eye lands on it between sets. */
+.set-row.current {
+  background: var(--bg);
+}
+.set-row.current .stepper {
+  background: var(--cell);
+}
+.set-row.current .check-btn {
+  border-color: var(--tint);
+  color: var(--tint);
 }
 .set-row.done {
-  background: var(--accent-soft);
+  background: var(--tint-soft);
 }
 .set-row.done .stepper {
   background: transparent;
 }
 .set-row.warmup .set-label {
-  color: var(--warning);
+  color: var(--orange-text);
 }
 .set-label {
   display: grid;
   place-items: center;
   height: 44px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: transparent;
-  font-weight: 750;
-  color: var(--muted);
+  color: var(--label-2);
+  font-weight: 700;
   cursor: pointer;
 }
+.set-row.done .set-label {
+  color: var(--tint);
+}
 .set-row.done .set-label svg {
-  color: var(--gold);
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--pr);
+  color: #000000;
+  box-sizing: content-box;
 }
 .rpe-select {
   height: 44px;
   min-width: 0;
   border: 0;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  color: var(--text);
+  border-radius: 999px;
+  background: var(--fill-3);
+  color: var(--label);
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   text-align: center;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .check-btn {
   display: grid;
   place-items: center;
   height: 44px;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 2px solid var(--fill);
+  border-radius: 999px;
   background: transparent;
-  color: var(--muted);
+  color: var(--label-3);
   cursor: pointer;
+  transition: transform 0.1s;
 }
 .check-btn[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-text);
+  border-color: var(--tint);
+  background: var(--tint);
+  color: var(--on-tint);
 }
 .check-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 
+/* PR toast: drops in below the nav bar, so it never covers Finish. */
 .toast {
   position: fixed;
   left: 16px;
   right: 16px;
-  top: calc(env(safe-area-inset-top) + 12px);
+  top: calc(env(safe-area-inset-top) + 64px);
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 608px;
+  gap: 12px;
+  max-width: 480px;
   margin: 0 auto;
-  padding: 14px 16px;
-  border-radius: var(--radius);
-  /* Same in light and dark: dark text on bright gold reads well in both. */
-  background: #facc15;
-  color: #1c1400;
-  box-shadow: var(--shadow);
-  animation: slide-down 0.25s ease-out;
+  padding: 12px 18px;
+  border-radius: 24px;
+  /* Same in light and dark: black on bright yellow reads well in both. */
+  background: var(--pr);
+  color: #000000;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: drop 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
 }
-@keyframes slide-down {
+@keyframes drop {
   from {
-    transform: translateY(-20px);
-    opacity: 0;
+    transform: translateY(-140%);
   }
 }
 
+/* Rest timer: a floating glass pill, like an iOS Live Activity. */
 .rest-bar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 16px;
+  right: 16px;
+  bottom: var(--tab-gap);
   z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  max-width: 640px;
+  max-width: 480px;
+  min-height: 72px;
   margin: 0 auto;
-  padding: 14px 16px calc(env(safe-area-inset-bottom) + 14px);
-  background: var(--surface-3);
-  border-top: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  padding: 10px 10px 10px 22px;
   overflow: hidden;
+  border-radius: 36px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 0 0 0.5px var(--glass-rim);
+  animation: rise 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
 .rest-progress {
   position: absolute;
-  inset: 0 0 auto 0;
+  inset: auto 0 0 0;
   height: 4px;
-  background: var(--accent);
+  background: var(--tint);
   transform-origin: left;
   transition: transform 0.25s linear;
 }
@@ -997,38 +1259,100 @@ svg {
   min-width: 0;
 }
 .rest-label {
-  font-size: 0.8rem;
-  color: var(--muted);
-  white-space: nowrap;
   overflow: hidden;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
   text-overflow: ellipsis;
+  color: var(--label-2);
 }
 .rest-time {
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 700;
 }
 .rest-actions {
   display: flex;
   gap: 6px;
 }
 .rest-actions .btn {
-  padding: 0 12px;
   min-width: 48px;
+  padding: 0 12px;
+  background: var(--fill-3);
+  color: var(--label);
 }
 .rest-over {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: var(--accent);
+  background: var(--tint);
+  color: var(--on-tint);
 }
 .rest-over strong {
   flex: 1;
+  font-size: 15px;
 }
 .rest-over .btn {
-  background: var(--accent-text);
-  color: var(--accent);
-  border-color: transparent;
+  background: rgba(255, 255, 255, 0.25);
+  color: inherit;
+}
+@keyframes rise {
+  from {
+    transform: translateY(140%);
+  }
+}
+
+/* A workout in progress, docked above the tab bar (iOS 26 tab bar accessory). */
+.workout-bar {
+  position: fixed;
+  left: 24px;
+  right: 24px;
+  bottom: calc(var(--tab-gap) + var(--tab-h) + 8px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 464px;
+  height: 56px;
+  margin: 0 auto;
+  padding: 0 16px 0 10px;
+  border-radius: 999px;
+  color: var(--label);
+  text-decoration: none;
+}
+.workout-bar-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--on-tint);
+}
+.workout-bar-text {
+  flex: 1;
+  min-width: 0;
+}
+.workout-bar-title {
+  display: block;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.workout-bar-meta {
+  display: block;
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--tint);
+}
+.workout-bar > svg {
+  color: var(--label-3);
 }
 
 /* ---------- Stats & history */
@@ -1037,57 +1361,74 @@ svg {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .stat {
   display: grid;
   gap: 2px;
-  padding: 14px 12px;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  min-width: 0;
+  padding: 14px;
+  border-radius: var(--radius-group);
+  background: var(--cell);
 }
 .stat-value {
-  font-size: 1.2rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .stat-label {
-  font-size: 0.75rem;
-  color: var(--muted);
+  order: -1;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--label-2);
 }
 
 .pr-card {
-  border-color: color-mix(in srgb, var(--gold) 50%, var(--border));
-  background: linear-gradient(135deg, var(--gold-soft), transparent 70%), var(--surface);
+  background: linear-gradient(160deg, var(--pr-soft), transparent 60%), var(--cell);
 }
 .pr-card h2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--gold);
+}
+.pr-card h2 svg {
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--pr);
+  color: #000000;
+  box-sizing: content-box;
 }
 .pr-icon {
-  color: var(--gold);
   margin-left: 6px;
-  vertical-align: -2px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--pr);
+  color: #000000;
+  vertical-align: -3px;
+  box-sizing: content-box;
 }
 
 .history-list {
-  list-style: none;
+  display: grid;
+  gap: 12px;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 10px;
+  list-style: none;
 }
 .history-list li {
   display: grid;
   grid-template-columns: 96px 1fr;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 15px;
 }
 .history-date {
-  color: var(--muted);
+  color: var(--tint);
   text-decoration: none;
 }
 
@@ -1095,36 +1436,48 @@ svg {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: var(--radius);
-  margin-bottom: 12px;
-  background: var(--surface-2);
+  margin-bottom: 16px;
+  border-radius: var(--radius-group);
+  background: #ffffff;
 }
 
 .details {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 8px 16px;
+  gap: 10px 16px;
 }
 .details dt {
-  color: var(--muted);
+  color: var(--label);
 }
 .details dd {
   margin: 0;
+  text-align: right;
+  color: var(--label-2);
 }
 
-/* ---------- Bottom nav */
+/* ---------- Tab bar: a floating glass capsule. */
 
 .bottom-nav {
   position: fixed;
-  inset: auto 0 0 0;
+  left: 16px;
+  right: 16px;
+  bottom: var(--tab-gap);
   z-index: 10;
   display: flex;
-  justify-content: space-around;
-  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border);
+  max-width: 480px;
+  height: var(--tab-h);
+  margin: 0 auto;
+  padding: 4px;
+  border-radius: 999px;
+}
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 0 0 0.5px var(--glass-rim),
+    inset 0 1px 0 var(--glass-rim);
 }
 .nav-item {
   flex: 1;
@@ -1132,12 +1485,28 @@ svg {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  font-size: 0.72rem;
+  gap: 2px;
+  min-width: 0;
+  border-radius: 999px;
+  color: var(--label);
+  font-size: 10px;
+  line-height: 12px;
   font-weight: 600;
-  color: var(--muted);
   text-decoration: none;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 .nav-item.active {
-  color: var(--accent);
+  background: var(--fill-3);
+  color: var(--tint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

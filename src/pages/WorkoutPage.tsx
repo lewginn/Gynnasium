@@ -67,6 +67,9 @@ export default function WorkoutPage() {
     navigate('/', { replace: true })
   }
 
+  // The first exercise with sets left is the one you're on.
+  const currentExerciseId = exercises.find((e) => e.sets.some((s) => !s.completedAt))?.se.id
+
   return (
     <div className="workout">
       <header className="workout-header">
@@ -95,6 +98,7 @@ export default function WorkoutPage() {
         <ExerciseCard
           key={entry.se.id}
           entry={entry}
+          current={entry.se.id === currentExerciseId}
           first={i === 0}
           last={i === exercises.length - 1}
           sessionId={session.id}

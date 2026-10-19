@@ -9,6 +9,16 @@ The owner tests and signs off on PRs; Claude writes the code.
 - **AI proposes, user approves.** AI output is a structured diff against plan rows, previewed before applying. Never write AI changes straight into plans.
 - **Weights are stored in kg** (`weightKg`), converted only for display via `src/lib/units.ts`.
 
+## Design
+The UI follows Apple's iOS design kit (HIG, iOS 26), even in the browser and on Android.
+- Colours are iOS semantic colour tokens in `src/index.css` (`--label`, `--label-2`, `--cell`, `--bg`, `--fill-3`, `--separator`, `--tint`, `--pr`); light/dark follow the system. Don't hard-code colours.
+- Two deliberate departures from Apple's values, both for WCAG AA (the axe test in `e2e/qa.spec.ts` enforces it): the light-mode tint is #1b7032, and `--label-2` is 76% rather than 60%.
+- Lists are inset grouped (`.list` / `.list-row`, `.section-label` for headers, `.section-title` for Fitness-style titles); cards are `.card`. Buttons are capsules: `.btn` (gray: tinted text on a fill), `.btn-primary` (filled). Sheets float inset with a grabber.
+- Numbers (weights, reps, timers, stats) use SF Pro Rounded with tabular figures; add new numeric classes to the `ui-rounded` rule. PRs are yellow (`--pr`) with black text.
+- Glass (`.glass`) is for floating chrome only: the tab bar, the docked `WorkoutBar`, the rest timer, back buttons.
+- Tab bar glyphs are SF Symbols-style SVGs in `src/components/Icon.tsx`; content icons use lucide.
+- In a workout, the next set of the exercise you're on gets `.set-row.current`.
+
 ## Conventions
 - IDs are `crypto.randomUUID()` generated on the device; library exercises use their free-exercise-db string id.
 - Synced rows carry `updatedAt` (ms epoch locally, timestamptz in Postgres) and soft-delete via `deletedAt`. Always filter out `deletedAt` rows.
