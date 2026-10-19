@@ -32,12 +32,14 @@ interface Props {
   last: boolean
   /** Hidden when editing an old workout, where "last time" could be a later workout. */
   showLastTime?: boolean
+  /** The exercise you're on: its next set is highlighted. */
+  current?: boolean
   /** Called when a set is ticked off (not when un-ticked), with any PRs it set. */
   onSetDone: (prs: SetLog['prs']) => void
 }
 
 /** One exercise in a workout (live or being edited afterwards): its sets, and a menu to swap, move or remove it. */
-export default function ExerciseCard({ entry, sessionId, settings, library, first, last, showLastTime = true, onSetDone }: Props) {
+export default function ExerciseCard({ entry, sessionId, settings, library, first, last, showLastTime = true, current = false, onSetDone }: Props) {
   const { se, exercise, sets } = entry
   const [menu, setMenu] = useState(false)
   const [swapping, setSwapping] = useState(false)
@@ -51,6 +53,8 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
     void action()
   }
 
+  // On the exercise you're doing, the first set not yet done is the one to look at.
+  const currentId = current ? sets.find((s) => !s.completedAt)?.id : undefined
   let workingNumber = 0
   return (
     <section className="card exercise-card" aria-label={exercise.name}>
@@ -82,6 +86,7 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
               key={set.id}
               set={set}
               label={label}
+              current={set.id === currentId}
               logging={logging}
               settings={settings}
               onMenu={() => setSetMenuFor(set)}
@@ -176,6 +181,7 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
 function SetRow({
   set,
   label,
+  current,
   logging,
   settings,
   onMenu,
@@ -183,6 +189,7 @@ function SetRow({
 }: {
   set: SetLog
   label: string
+  current: boolean
   logging: LoggingType
   settings: Settings
   onMenu: () => void
@@ -195,7 +202,7 @@ function SetRow({
   const maxWeight = units === 'kg' ? 1000 : 2200
 
   return (
-    <div className={`set-row ${done ? 'done' : ''} ${set.setType === 'warmup' ? 'warmup' : ''}`} role="group" aria-label={`Set ${label}`}>
+    <div className={`set-row ${done ? 'done' : ''} ${current ? 'current' : ''} ${set.setType === 'warmup' ? 'warmup' : ''}`} role="group" aria-label={`Set ${label}`}>
       <button className="set-label" onClick={onMenu} aria-label={`Set ${label} options`}>
         {isPR ? <Trophy size={16} aria-label="PR" /> : label}
       </button>
