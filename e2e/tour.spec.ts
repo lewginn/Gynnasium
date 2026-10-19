@@ -6,6 +6,7 @@ import { addPushPullLegsPlan, exerciseCard, finishWorkout, freezeClock, nav, set
 test.use({ colorScheme: 'dark' })
 
 test('screen tour', async ({ page }) => {
+  test.setTimeout(90_000) // walks every screen; slow under parallel load
   let n = 0
   const snap = async (name: string) => {
     await page.waitForTimeout(350) // let sheets and banners finish animating in

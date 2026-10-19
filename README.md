@@ -10,8 +10,8 @@ It's a web app you can install to your home screen, and it works offline.
 | 0 | App shell, offline support, exercise library, settings, schema, CI | ✅ |
 | 1 | Plan builder + suggestions + templates, workout logger, rest timer, PRs, e1RM, history | ✅ |
 | 1.5 | Bodyweight & timed exercises, reorder mid-workout, edit past workouts | ✅ |
-| 2 | Body metrics, progress charts, Supabase sync + login | Next |
-| 3 | AI plan builder and chat (Claude) | |
+| 2 | Login (email link), sync & backup, body metrics, progress charts | ✅ |
+| 3 | AI plan builder and chat (Claude) | Next |
 | 4 | Progressive overload, Garmin FIT export, native app wrapper | |
 
 ## Development

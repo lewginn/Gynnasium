@@ -98,18 +98,6 @@ export default function ExerciseDetailPage() {
         )}
       </section>
 
-      {exercise.image && (
-        <img
-          className="exercise-image"
-          src={IMAGE_BASE + exercise.image}
-          alt=""
-          width={320}
-          height={240}
-          // Hidden until it arrives, so there's no empty box while loading or when offline.
-          hidden
-          onLoad={(e) => (e.currentTarget.hidden = false)}
-        />
-      )}
       <section className="card">
         <h2 id="log-as">Log as</h2>
         <div className="segmented" role="radiogroup" aria-labelledby="log-as">
@@ -140,6 +128,19 @@ export default function ExerciseDetailPage() {
         <dt>Default rest</dt>
         <dd>{formatRest(exercise.defaultRestSec)}</dd>
       </dl>
+      {/* Last on the page: it loads late (from the web) and would otherwise push buttons down mid-tap. */}
+      {exercise.image && (
+        <img
+          className="exercise-image"
+          src={IMAGE_BASE + exercise.image}
+          alt=""
+          width={320}
+          height={240}
+          // Hidden until it arrives, so there's no empty box while loading or when offline.
+          hidden
+          onLoad={(e) => (e.currentTarget.hidden = false)}
+        />
+      )}
     </>
   )
 }
