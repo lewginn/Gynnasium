@@ -3,6 +3,7 @@ import { inferFocusMuscles } from '../lib/suggest'
 import type { PlanTemplate } from '../lib/templates'
 import type {
   Exercise,
+  LoggingType,
   Plan,
   PlanDay,
   PlanExercise,
@@ -68,14 +69,16 @@ export async function deletePlanDay(id: string) {
   await db.transaction('rw', db.planDays, db.planExercises, () => deleteDayRows(id, now()))
 }
 
-export function defaultRepRange(exercise: Exercise): [number, number] {
+/** Default target: reps for most exercises, seconds for timed ones. */
+export function defaultRepRange(exercise: Pick<Exercise, 'mechanic' | 'logging'>): [number, number] {
+  if (exercise.logging === 'time') return [30, 60]
   return exercise.mechanic === 'compound' ? [6, 10] : [10, 15]
 }
 
 export async function addPlanExercise(planDayId: string, exercise: Exercise): Promise<string> {
   const id = uuid()
   const order = await db.planExercises.where('planDayId').equals(planDayId).filter(alive).count()
-  const [repMin, repMax] = defaultRepRange(exercise)
+  const [repMin, repMax] = defaultRepRange(await withLogging(exercise))
   await db.planExercises.add({
     id,
     planDayId,
@@ -158,7 +161,7 @@ export async function loadPlan(planId: string): Promise<PlanDetail | null> {
   if (!alive(plan)) return null
   const days = (await db.planDays.where('planId').equals(planId).filter(alive).toArray()).sort(byOrder)
   const pes = await db.planExercises.where('planDayId').anyOf(days.map((d) => d.id)).filter(alive).toArray()
-  const exercises = new Map((await db.exercises.bulkGet([...new Set(pes.map((p) => p.exerciseId))])).filter(Boolean).map((e) => [e!.id, e!]))
+  const exercises = await loadExercises(pes.map((p) => p.exerciseId))
   return {
     plan,
     days: days.map((day) => ({
@@ -198,26 +201,33 @@ export async function lastPerformance(exerciseId: string, excludeSessionId?: str
 /** Planned (not yet completed) set rows, pre-filled from last time so logging is usually one tap. */
 async function planSets(
   sessionExerciseId: string,
-  exerciseId: string,
+  exercise: Pick<Exercise, 'id' | 'logging'>,
   count: number,
-  repTarget: number,
+  /** Reps, or seconds for timed exercises, when there's no history to copy. */
+  target: number,
   sessionId: string,
 ): Promise<SetLog[]> {
-  const last = await lastPerformance(exerciseId, sessionId)
+  const last = await lastPerformance(exercise.id, sessionId)
+  const timed = exercise.logging === 'time'
   return Array.from({ length: count }, (_, i) => {
     const ref = last[Math.min(i, last.length - 1)]
     return {
       id: uuid(),
       sessionExerciseId,
-      exerciseId,
+      exerciseId: exercise.id,
       setNumber: i + 1,
       setType: 'working' as const,
       weightKg: ref?.weightKg ?? 0,
-      reps: ref?.reps ?? repTarget,
+      reps: timed ? 0 : (ref?.reps ?? target),
+      ...(timed ? { durationSec: ref?.durationSec ?? target } : {}),
       updatedAt: now(),
     }
   })
 }
+
+/** What to pre-fill when there's no history: the top of the rep range, or the bottom of a time range. */
+const planTarget = (exercise: Exercise, pe: Pick<PlanExercise, 'repMin' | 'repMax'>) =>
+  exercise.logging === 'time' ? pe.repMin : pe.repMax
 
 export async function startSession(planDayId?: string): Promise<string> {
   const existing = await getActiveSession()
@@ -226,13 +236,16 @@ export async function startSession(planDayId?: string): Promise<string> {
   const sessionId = uuid()
   const day = planDayId ? await db.planDays.get(planDayId) : undefined
   const pes = day ? (await db.planExercises.where('planDayId').equals(day.id).filter(alive).toArray()).sort(byOrder) : []
+  const exercises = await loadExercises(pes.map((pe) => pe.exerciseId))
 
   const sessionExercises: SessionExercise[] = []
   const sets: SetLog[] = []
   for (const [order, pe] of pes.entries()) {
+    const exercise = exercises.get(pe.exerciseId)
+    if (!exercise) continue
     const se: SessionExercise = { id: uuid(), sessionId, exerciseId: pe.exerciseId, order, updatedAt: now() }
     sessionExercises.push(se)
-    sets.push(...(await planSets(se.id, pe.exerciseId, pe.targetSets, pe.repMax, sessionId)))
+    sets.push(...(await planSets(se.id, exercise, pe.targetSets, planTarget(exercise, pe), sessionId)))
   }
 
   await db.transaction('rw', db.sessions, db.sessionExercises, db.setLogs, async () => {
@@ -245,8 +258,10 @@ export async function startSession(planDayId?: string): Promise<string> {
 
 export async function addSessionExercise(sessionId: string, exercise: Exercise): Promise<string> {
   const id = uuid()
+  const ex = await withLogging(exercise)
   const order = await db.sessionExercises.where('sessionId').equals(sessionId).filter(alive).count()
-  const sets = await planSets(id, exercise.id, 3, defaultRepRange(exercise)[1], sessionId)
+  const [repMin, repMax] = defaultRepRange(ex)
+  const sets = await planSets(id, ex, 3, planTarget(ex, { repMin, repMax }), sessionId)
   await db.transaction('rw', db.sessionExercises, db.setLogs, async () => {
     await db.sessionExercises.add({ id, sessionId, exerciseId: exercise.id, order, updatedAt: now() })
     await db.setLogs.bulkAdd(sets)
@@ -258,12 +273,14 @@ export async function addSessionExercise(sessionId: string, exercise: Exercise):
 export async function swapSessionExercise(sessionExerciseId: string, newExercise: Exercise) {
   const se = await db.sessionExercises.get(sessionExerciseId)
   if (!se) return
+  const ex = await withLogging(newExercise)
   const sets = (await db.setLogs.where('sessionExerciseId').equals(se.id).filter(alive).toArray()).sort(
     (a, b) => a.setNumber - b.setNumber,
   )
   const pending = sets.filter((s) => !s.completedAt)
   const done = sets.filter((s) => s.completedAt)
-  const refill = await planSets(se.id, newExercise.id, pending.length, pending[0]?.reps ?? 10, se.sessionId)
+  const [repMin, repMax] = defaultRepRange(ex)
+  const refill = await planSets(se.id, ex, pending.length, planTarget(ex, { repMin, repMax }), se.sessionId)
   await db.transaction('rw', db.sessionExercises, db.setLogs, async () => {
     await db.sessionExercises.update(se.id, {
       exerciseId: newExercise.id,
@@ -284,6 +301,21 @@ export async function removeSessionExercise(sessionExerciseId: string) {
   })
 }
 
+/** Moves an exercise up (-1) or down (+1) within a workout, e.g. when the squat rack is busy. */
+export async function moveSessionExercise(sessionExerciseId: string, direction: -1 | 1) {
+  await db.transaction('rw', db.sessionExercises, async () => {
+    const se = await db.sessionExercises.get(sessionExerciseId)
+    if (!se) return
+    const siblings = (await db.sessionExercises.where('sessionId').equals(se.sessionId).filter(alive).toArray()).sort(byOrder)
+    const i = siblings.findIndex((s) => s.id === se.id)
+    const j = i + direction
+    if (j < 0 || j >= siblings.length) return
+    ;[siblings[i], siblings[j]] = [siblings[j], siblings[i]]
+    const t = now()
+    await Promise.all(siblings.map((s, order) => (s.order === order ? null : db.sessionExercises.update(s.id, { order, updatedAt: t }))))
+  })
+}
+
 export async function addSet(sessionExerciseId: string) {
   const se = await db.sessionExercises.get(sessionExerciseId)
   if (!se) return
@@ -291,6 +323,7 @@ export async function addSet(sessionExerciseId: string) {
     (a, b) => a.setNumber - b.setNumber,
   )
   const last = sets.at(-1)
+  const timed = (await loggingOf(se.exerciseId)) === 'time'
   await db.setLogs.add({
     id: uuid(),
     sessionExerciseId: se.id,
@@ -298,31 +331,33 @@ export async function addSet(sessionExerciseId: string) {
     setNumber: (last?.setNumber ?? 0) + 1,
     setType: 'working',
     weightKg: last?.weightKg ?? 0,
-    reps: last?.reps ?? 10,
+    reps: last?.reps ?? (timed ? 0 : 10),
+    ...(timed ? { durationSec: last?.durationSec ?? 30 } : {}),
     rpe: last?.rpe,
     updatedAt: now(),
   })
 }
 
-export async function updateSet(id: string, patch: Partial<Pick<SetLog, 'weightKg' | 'reps' | 'rpe' | 'setType'>>) {
-  await db.transaction('rw', db.setLogs, db.sessionExercises, async () => {
+type SetPatch = Partial<Pick<SetLog, 'weightKg' | 'reps' | 'durationSec' | 'rpe' | 'setType'>>
+
+export async function updateSet(id: string, patch: SetPatch) {
+  await db.transaction('rw', db.setLogs, db.sessionExercises, db.exercises, db.kv, async () => {
     const set = await db.setLogs.get(id)
     if (!set) return
     const next = { ...set, ...patch }
     // Editing a completed set re-checks whether it's a PR.
-    const prs = set.completedAt ? detectPRs(next, await priorSets(set)) : undefined
+    const prs = set.completedAt ? detectPRs(next, await priorSets(set), await loggingOf(set.exerciseId)) : undefined
     await db.setLogs.update(id, { ...patch, ...(set.completedAt ? { prs } : {}), updatedAt: now() })
 
-    // Carry weight/reps down to later sets that aren't done and still hold the old value,
+    // Carry weight/reps/time down to later sets that aren't done and still hold the old value,
     // so typing 80kg on set 1 fills sets 2–4 too. Sets you've changed yourself are left alone.
     const later = (await db.setLogs.where('sessionExerciseId').equals(set.sessionExerciseId).filter(alive).toArray()).filter(
       (s) => s.setNumber > set.setNumber && !s.completedAt && s.setType === set.setType,
     )
-    for (const field of ['weightKg', 'reps'] as const) {
-      if (patch[field] === undefined) continue
+    for (const field of ['weightKg', 'reps', 'durationSec'] as const) {
       const value = patch[field]
-      for (const s of later)
-        if (s[field] === set[field]) await db.setLogs.update(s.id, field === 'weightKg' ? { weightKg: value, updatedAt: now() } : { reps: value, updatedAt: now() })
+      if (value === undefined) continue
+      for (const s of later) if (s[field] === set[field]) await db.setLogs.update(s.id, { [field]: value, updatedAt: now() } as SetPatch)
     }
   })
 }
@@ -345,12 +380,15 @@ async function priorSets(set: SetLog): Promise<SetLog[]> {
 
 /** Marks a set done. Returns the PRs it set, if any. */
 export async function completeSet(id: string): Promise<SetLog['prs']> {
-  return db.transaction('rw', db.setLogs, db.sessionExercises, async () => {
+  return db.transaction('rw', db.setLogs, db.sessionExercises, db.sessions, db.exercises, db.kv, async () => {
     const set = await db.setLogs.get(id)
     if (!set) return []
-    const completedAt = now()
-    const prs = detectPRs(set, await priorSets({ ...set, completedAt }))
-    await db.setLogs.update(id, { completedAt, prs, updatedAt: completedAt })
+    // Ticking a set while editing a finished workout files it under that workout's time, not today.
+    const se = await db.sessionExercises.get(set.sessionExerciseId)
+    const session = se ? await db.sessions.get(se.sessionId) : undefined
+    const completedAt = session?.endedAt ?? now()
+    const prs = detectPRs(set, await priorSets({ ...set, completedAt }), await loggingOf(set.exerciseId))
+    await db.setLogs.update(id, { completedAt, prs, updatedAt: now() })
     return prs
   })
 }
@@ -371,20 +409,25 @@ export async function deleteSet(id: string) {
   await db.setLogs.update(id, { deletedAt: now(), updatedAt: now() })
 }
 
+/** Drops sets that were never ticked and exercises left with none. Returns whether anything was logged. */
+async function tidySession(sessionId: string, t: number): Promise<boolean> {
+  const ses = await db.sessionExercises.where('sessionId').equals(sessionId).filter(alive).toArray()
+  let anyDone = false
+  for (const se of ses) {
+    const sets = await db.setLogs.where('sessionExerciseId').equals(se.id).filter(alive).toArray()
+    const pending = sets.filter((s) => !s.completedAt)
+    await db.setLogs.bulkDelete(pending.map((s) => s.id))
+    if (pending.length === sets.length) await db.sessionExercises.update(se.id, { deletedAt: t, updatedAt: t })
+    else anyDone = true
+  }
+  return anyDone
+}
+
 /** Ends the workout, dropping sets that were never done. Returns false (and discards it) if nothing was logged. */
 export async function finishSession(sessionId: string): Promise<boolean> {
   const t = now()
   return db.transaction('rw', db.sessions, db.sessionExercises, db.setLogs, async () => {
-    const ses = await db.sessionExercises.where('sessionId').equals(sessionId).filter(alive).toArray()
-    let anyDone = false
-    for (const se of ses) {
-      const sets = await db.setLogs.where('sessionExerciseId').equals(se.id).filter(alive).toArray()
-      const pending = sets.filter((s) => !s.completedAt)
-      await db.setLogs.bulkDelete(pending.map((s) => s.id))
-      if (pending.length === sets.length) await db.sessionExercises.update(se.id, { deletedAt: t, updatedAt: t })
-      else anyDone = true
-    }
-    if (!anyDone) {
+    if (!(await tidySession(sessionId, t))) {
       await db.sessions.update(sessionId, { deletedAt: t, endedAt: t, updatedAt: t })
       return false
     }
@@ -393,14 +436,67 @@ export async function finishSession(sessionId: string): Promise<boolean> {
   })
 }
 
+/**
+ * Saves edits to a finished workout: tidies unticked sets and re-checks PRs for its exercises across all
+ * history, since changing an old workout can make or unmake PRs in later ones. Returns false if it's now empty.
+ */
+export async function saveSessionEdits(sessionId: string): Promise<boolean> {
+  const t = now()
+  const exerciseIds = await sessionExerciseIds(sessionId)
+  const kept = await db.transaction('rw', db.sessions, db.sessionExercises, db.setLogs, async () => {
+    const anyDone = await tidySession(sessionId, t)
+    await db.sessions.update(sessionId, anyDone ? { updatedAt: t } : { deletedAt: t, updatedAt: t })
+    return anyDone
+  })
+  await recomputePRs(exerciseIds)
+  return kept
+}
+
+/** Discards an in-progress workout, or deletes a finished one, re-checking PRs it may have held. */
 export async function discardSession(sessionId: string) {
   const t = now()
+  const exerciseIds = await sessionExerciseIds(sessionId)
   await db.transaction('rw', db.sessions, db.sessionExercises, db.setLogs, async () => {
     const ses = await db.sessionExercises.where('sessionId').equals(sessionId).toArray()
     await db.setLogs.where('sessionExerciseId').anyOf(ses.map((s) => s.id)).modify({ deletedAt: t, updatedAt: t })
     await db.sessionExercises.where('sessionId').equals(sessionId).modify({ deletedAt: t, updatedAt: t })
     await db.sessions.update(sessionId, { deletedAt: t, endedAt: t, updatedAt: t })
   })
+  await recomputePRs(exerciseIds)
+}
+
+async function sessionExerciseIds(sessionId: string): Promise<string[]> {
+  const ses = await db.sessionExercises.where('sessionId').equals(sessionId).toArray()
+  const sets = await db.setLogs.where('sessionExerciseId').anyOf(ses.map((s) => s.id)).toArray()
+  return [...new Set([...ses.map((s) => s.exerciseId), ...sets.map((s) => s.exerciseId)])]
+}
+
+/** Re-derives PR flags for every completed set of these exercises, in the order they were done. */
+export async function recomputePRs(exerciseIds: string[]) {
+  for (const exerciseId of exerciseIds) {
+    const logging = await loggingOf(exerciseId)
+    const sets = await db.setLogs
+      .where('[exerciseId+completedAt]')
+      .between([exerciseId, 0], [exerciseId, Infinity])
+      .filter(alive)
+      .toArray()
+    const ses = new Map((await db.sessionExercises.bulkGet([...new Set(sets.map((s) => s.sessionExerciseId))])).filter(alive).map((se) => [se.id, se]))
+    const liveSessions = new Set(
+      (await db.sessions.bulkGet([...new Set([...ses.values()].map((se) => se.sessionId))])).filter(alive).map((s) => s.id),
+    )
+    const sessionOf = (s: SetLog) => ses.get(s.sessionExerciseId)?.sessionId
+    const ordered = sets
+      .filter((s) => liveSessions.has(sessionOf(s) ?? ''))
+      .sort((a, b) => a.completedAt! - b.completedAt! || a.setNumber - b.setNumber)
+
+    const prior: SetLog[] = []
+    for (const s of ordered) {
+      const hasEarlierSession = prior.some((p) => sessionOf(p) !== sessionOf(s))
+      const prs = hasEarlierSession ? detectPRs(s, prior, logging) : []
+      if (JSON.stringify(prs) !== JSON.stringify(s.prs ?? [])) await db.setLogs.update(s.id, { prs })
+      prior.push(s)
+    }
+  }
 }
 
 export interface SessionDetail {
@@ -413,7 +509,7 @@ export async function loadSession(sessionId: string): Promise<SessionDetail | nu
   if (!alive(session)) return null
   const ses = (await db.sessionExercises.where('sessionId').equals(sessionId).filter(alive).toArray()).sort(byOrder)
   const sets = await db.setLogs.where('sessionExerciseId').anyOf(ses.map((s) => s.id)).filter(alive).toArray()
-  const exercises = new Map((await db.exercises.bulkGet(ses.map((s) => s.exerciseId))).filter(Boolean).map((e) => [e!.id, e!]))
+  const exercises = await loadExercises(ses.map((s) => s.exerciseId))
   return {
     session,
     exercises: ses
@@ -424,6 +520,43 @@ export async function loadSession(sessionId: string): Promise<SessionDetail | nu
         sets: sets.filter((s) => s.sessionExerciseId === se.id).sort((a, b) => a.setNumber - b.setNumber),
       })),
   }
+}
+
+// ---------------------------------------------------------------- Exercises & logging type
+
+/** Per-exercise "log as" choices that override the library default, e.g. logging a machine as bodyweight. */
+export async function loggingOverrides(): Promise<Record<string, LoggingType>> {
+  return ((await db.kv.get('loggingOverrides'))?.value as Record<string, LoggingType> | undefined) ?? {}
+}
+
+export async function setLoggingOverride(exerciseId: string, logging: LoggingType) {
+  await db.transaction('rw', db.kv, db.exercises, async () => {
+    const overrides = await loggingOverrides()
+    const libraryDefault = (await db.exercises.get(exerciseId))?.logging ?? 'weight_reps'
+    if (logging === libraryDefault) delete overrides[exerciseId]
+    else overrides[exerciseId] = logging
+    await db.kv.put({ key: 'loggingOverrides', value: overrides })
+  })
+  await recomputePRs([exerciseId])
+}
+
+async function withLogging(exercise: Exercise): Promise<Exercise> {
+  return { ...exercise, logging: (await loggingOverrides())[exercise.id] ?? exercise.logging ?? 'weight_reps' }
+}
+
+export async function loggingOf(exerciseId: string): Promise<LoggingType> {
+  return (await loggingOverrides())[exerciseId] ?? (await db.exercises.get(exerciseId))?.logging ?? 'weight_reps'
+}
+
+/** Exercises by id, with any "log as" override applied. */
+export async function loadExercises(ids: string[]): Promise<Map<string, Exercise>> {
+  const overrides = await loggingOverrides()
+  const rows = (await db.exercises.bulkGet([...new Set(ids)])).filter((e): e is Exercise => !!e)
+  return new Map(rows.map((e) => [e.id, { ...e, logging: overrides[e.id] ?? e.logging ?? 'weight_reps' }]))
+}
+
+export async function loadExercise(id: string): Promise<Exercise | null> {
+  return (await loadExercises([id])).get(id) ?? null
 }
 
 // ---------------------------------------------------------------- History
@@ -469,6 +602,6 @@ export async function recentPRSets(limit = 10): Promise<{ set: SetLog; exercise:
     .toArray()
   sets.sort((a, b) => b.completedAt! - a.completedAt!)
   const top = sets.slice(0, limit)
-  const exercises = new Map((await db.exercises.bulkGet(top.map((s) => s.exerciseId))).filter(Boolean).map((e) => [e!.id, e!]))
+  const exercises = await loadExercises(top.map((s) => s.exerciseId))
   return top.filter((s) => exercises.has(s.exerciseId)).map((set) => ({ set, exercise: exercises.get(set.exerciseId)! }))
 }

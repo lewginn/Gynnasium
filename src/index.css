@@ -853,6 +853,9 @@ svg {
 .last-time {
   margin: 0 0 10px;
 }
+.hint {
+  margin: -2px 4px 8px;
+}
 
 .set-grid {
   display: grid;

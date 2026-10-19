@@ -42,7 +42,10 @@ export async function finishWorkout(page: Page) {
   await expect(page.getByText('Duration')).toBeVisible()
 }
 
-/** Freezes the page clock (installed with page.clock.install) so countdowns don't drift on a busy machine. */
+/**
+ * Freezes the page clock (installed with page.clock.install) so countdowns don't drift on a busy machine.
+ * Pauses up to a second ahead (it can't pause in the past), so a countdown may read one second lower.
+ */
 export async function freezeClock(page: Page) {
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100))
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
 }

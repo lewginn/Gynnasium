@@ -1,12 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Trophy } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { db } from '../db/db'
-import { exerciseHistory } from '../db/repo'
+import { exerciseHistory, loadExercise, setLoggingOverride } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { formatDay, formatRest } from '../lib/format'
 import { EQUIPMENT_LABELS, MUSCLE_LABELS, PATTERN_LABELS } from '../lib/labels'
-import { bestE1RM, countsForStats, summariseSets } from '../lib/summary'
+import { bestE1RM, countsForStats, formatAddedWeight, formatDuration, summariseSets } from '../lib/summary'
+import type { LoggingType, SetLog, Settings } from '../lib/types'
 import { formatWeight } from '../lib/units'
 
 const IMAGE_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
@@ -15,7 +15,7 @@ export default function ExerciseDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const settings = useSettings()
-  const exercise = useLiveQuery(async () => (await db.exercises.get(id)) ?? null, [id])
+  const exercise = useLiveQuery(() => loadExercise(id), [id])
   const history = useLiveQuery(() => exerciseHistory(id), [id])
 
   if (exercise === undefined) return <p className="muted">Loading…</p>
@@ -29,8 +29,7 @@ export default function ExerciseDetailPage() {
 
   const allSets = history?.flatMap((h) => h.sets) ?? []
   const working = allSets.filter(countsForStats)
-  const e1rm = bestE1RM(allSets)
-  const heaviest = working.length ? Math.max(...working.map((s) => s.weightKg)) : null
+  const stats = statsFor(exercise.logging, working, settings)
 
   return (
     <>
@@ -46,18 +45,12 @@ export default function ExerciseDetailPage() {
 
       {working.length > 0 && (
         <div className="stat-row">
-          <div className="stat">
-            <span className="stat-value">{e1rm ? formatWeight(e1rm, settings.units).replace(/(\.\d)\d+/, '$1') : '–'}</span>
-            <span className="stat-label">Best est. 1RM</span>
-          </div>
-          <div className="stat">
-            <span className="stat-value">{heaviest !== null ? formatWeight(heaviest, settings.units) : '–'}</span>
-            <span className="stat-label">Heaviest</span>
-          </div>
-          <div className="stat">
-            <span className="stat-value">{history?.length ?? 0}</span>
-            <span className="stat-label">Workouts</span>
-          </div>
+          {[...stats, { label: 'Workouts', value: String(history?.length ?? 0) }].map((stat) => (
+            <div key={stat.label} className="stat">
+              <span className="stat-value">{stat.value}</span>
+              <span className="stat-label">{stat.label}</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -71,7 +64,7 @@ export default function ExerciseDetailPage() {
                   {formatDay(session.startedAt)}
                 </Link>
                 <span>
-                  {summariseSets(sets.filter((s) => s.setType !== 'warmup'), settings)}
+                  {summariseSets(sets.filter((s) => s.setType !== 'warmup'), settings, exercise.logging)}
                   {sets.some((s) => s.prs?.length) && <Trophy size={14} className="pr-icon" aria-label="PR" />}
                 </span>
               </li>
@@ -94,6 +87,18 @@ export default function ExerciseDetailPage() {
           onLoad={(e) => (e.currentTarget.hidden = false)}
         />
       )}
+      <section className="card">
+        <h2 id="log-as">Log as</h2>
+        <div className="segmented" role="radiogroup" aria-labelledby="log-as">
+          {LOGGING_OPTIONS.map(([value, text]) => (
+            <button key={value} role="radio" aria-checked={exercise.logging === value} onClick={() => setLoggingOverride(exercise.id, value)}>
+              {text}
+            </button>
+          ))}
+        </div>
+        <p className="muted small">{LOGGING_HELP[exercise.logging]}</p>
+      </section>
+
       <dl className="card details">
         <dt>Primary</dt>
         <dd>{exercise.primaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}</dd>
@@ -114,4 +119,37 @@ export default function ExerciseDetailPage() {
       </dl>
     </>
   )
+}
+
+const LOGGING_OPTIONS: [LoggingType, string][] = [
+  ['weight_reps', 'Weight × reps'],
+  ['bodyweight', 'Bodyweight'],
+  ['time', 'Time'],
+]
+
+const LOGGING_HELP: Record<LoggingType, string> = {
+  weight_reps: 'Log the weight and reps for each set.',
+  bodyweight: 'Log reps, plus any added weight (or a minus for assistance).',
+  time: 'Log how long you held or carried it, plus any weight.',
+}
+
+/** The two headline numbers for an exercise, depending on how it's logged. */
+function statsFor(logging: LoggingType, sets: SetLog[], settings: Settings): { label: string; value: string }[] {
+  if (sets.length === 0) return []
+  const heaviest = Math.max(...sets.map((s) => s.weightKg))
+  if (logging === 'time')
+    return [
+      { label: 'Longest', value: formatDuration(Math.max(...sets.map((s) => s.durationSec ?? 0))) },
+      { label: 'Heaviest', value: heaviest > 0 ? formatWeight(heaviest, settings.units) : '–' },
+    ]
+  if (logging === 'bodyweight')
+    return [
+      { label: 'Most reps', value: String(Math.max(...sets.map((s) => s.reps))) },
+      { label: 'Most added', value: formatAddedWeight(heaviest, settings) },
+    ]
+  const e1rm = bestE1RM(sets)
+  return [
+    { label: 'Best est. 1RM', value: e1rm ? formatWeight(e1rm, settings.units).replace(/(\.\d)\d+/, '$1') : '–' },
+    { label: 'Heaviest', value: formatWeight(heaviest, settings.units) },
+  ]
 }
