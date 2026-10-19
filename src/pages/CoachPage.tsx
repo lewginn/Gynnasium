@@ -60,9 +60,14 @@ export default function CoachPage() {
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  useEffect(() => saveChat(planId, entries), [planId, entries])
-  // Keep the newest message in view, above the message box.
-  useEffect(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }), [entries.length, thinking])
+  useEffect(() => {
+    saveChat(planId, entries)
+  }, [planId, entries])
+  // Keep the newest message in view, above the message box. (Braces matter: newer browsers return a Promise
+  // from scrollTo, and React would take a returned value for a cleanup function.)
+  useEffect(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+  }, [entries.length, thinking])
   useEffect(() => () => abortRef.current?.abort(), [])
 
   const update = (i: number, patch: Partial<Extract<Entry, { role: 'coach' }>>) =>
