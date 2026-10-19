@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { BetaMessage, BetaMessageStreamParams } from '@anthropic-ai/sdk/resources/beta/messages/messages'
 import { describe, expect, it } from 'vitest'
 import type { CoachReply } from '../src/lib/coachSchema.js'
-import { MODEL, buildParams, catalogueText, handleCoach, parseRequest, type CoachDeps } from './coach.js'
+import { MODEL, OPTIONS, buildParams, catalogueText, handleCoach, parseRequest, type CoachDeps } from './coach.js'
 
 const reply: CoachReply = { message: 'Swapped the leg press for hack squats.', newPlan: null, changes: [] }
 
@@ -140,5 +140,21 @@ describe('catalogueText', () => {
         { id: 'Plank_With_Twist', equipment: 'bodyweight', primaryMuscles: ['abs'], logging: 'time' },
       ]),
     ).toBe('*Barbell_Squat | barbell | quads,glutes | w\nPlank_With_Twist | bodyweight | abs | t')
+  })
+})
+
+describe('CORS for the iPhone app', () => {
+  it('allows the app’s origin, and nothing else', async () => {
+    const from = (origin: string) => new Request('https://app.test/api/coach', { method: 'OPTIONS', headers: { origin } })
+    expect(OPTIONS(from('capacitor://localhost')).headers.get('access-control-allow-origin')).toBe('capacitor://localhost')
+    expect(OPTIONS(from('https://evil.example')).headers.get('access-control-allow-origin')).toBeNull()
+    const req = new Request('https://app.test/api/coach', {
+      method: 'POST',
+      headers: { origin: 'capacitor://localhost', authorization: 'Bearer good', 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const res = await handleCoach(req, deps().d)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('access-control-allow-origin')).toBe('capacitor://localhost')
   })
 })

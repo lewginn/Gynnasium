@@ -111,10 +111,25 @@ export function parseRequest(body: unknown): CoachRequest | string {
   return { mode, turns: turns as CoachRequest['turns'], context }
 }
 
-const json = (status: number, body: unknown) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } })
-const fail = (status: number, error: string) => json(status, { error })
+/** The iPhone app's web view runs on its own origin, so it needs CORS. The bearer token is the access control. */
+const APP_ORIGINS = new Set(['capacitor://localhost', 'ionic://localhost'])
+
+export function corsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('origin')
+  if (!origin || !APP_ORIGINS.has(origin)) return {}
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  }
+}
 
 export async function handleCoach(request: Request, deps: CoachDeps): Promise<Response> {
+  const cors = corsHeaders(request)
+  const json = (status: number, body: unknown) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', ...cors } })
+  const fail = (status: number, error: string) => json(status, { error })
   const { env } = deps
   if (!env.ANTHROPIC_API_KEY) return fail(503, 'The coach isn’t switched on: there’s no Anthropic API key on the server.')
 
@@ -178,4 +193,8 @@ const liveDeps = (): CoachDeps => ({
 
 export function POST(request: Request): Promise<Response> {
   return handleCoach(request, liveDeps())
+}
+
+export function OPTIONS(request: Request): Response {
+  return new Response(null, { status: 204, headers: corsHeaders(request) })
 }
