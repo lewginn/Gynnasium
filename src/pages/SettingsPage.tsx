@@ -1,3 +1,4 @@
+import AccountCard from '../components/AccountCard'
 import { updateSettings, useSettings } from '../db/settings'
 import type { Units } from '../lib/types'
 
@@ -11,6 +12,7 @@ export default function SettingsPage() {
       <header className="page-header">
         <h1>Settings</h1>
       </header>
+      <AccountCard />
       <section className="card">
         <h2 id="units-label">Units</h2>
         <div className="segmented" role="radiogroup" aria-labelledby="units-label">

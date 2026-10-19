@@ -6,6 +6,10 @@
 :root {
   /* Accent: systemGreen. In light mode a shade darker than Apple's accessible variant (#248a3d), which
      falls short of 4.5:1 on the gray fills; this one clears it on every background, fills included. */
+  /* Chart colours, validated (colour-blind separation, lightness band, contrast) against --cell in each theme. */
+  --chart-primary: #248a3d;
+  --chart-muted: #8e8e93; /* de-emphasis only: raw points behind a trend line, always with a legend */
+  --chart-grid: rgba(60, 60, 67, 0.14);
   --tint: #1b7032;
   --on-tint: #ffffff;
   --tint-soft: rgba(52, 199, 89, 0.14);
@@ -70,6 +74,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --chart-primary: #22a63f;
+    --chart-muted: #8e8e93;
+    --chart-grid: rgba(84, 84, 88, 0.45);
     --tint: #30d158;
     --on-tint: #000000;
     --tint-soft: rgba(48, 209, 88, 0.16);
@@ -1667,4 +1674,241 @@ select.input {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---------- Account */
+
+.account-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 600;
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login {
+  padding-top: calc(env(safe-area-inset-top) + 48px);
+}
+
+/* ---------- Charts */
+
+.chart {
+  margin: 0 0 4px;
+}
+.chart-frame {
+  position: relative;
+  width: 100%;
+}
+.chart-frame svg {
+  display: block;
+  overflow: visible;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.chart-frame svg:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.chart-grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.chart-axis {
+  fill: var(--label-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart-line.tone-primary {
+  stroke: var(--chart-primary);
+}
+.chart-line.tone-muted {
+  stroke: var(--chart-muted);
+}
+.chart-dot {
+  stroke: var(--cell); /* 2px surface ring keeps dots legible where they cross the line */
+  stroke-width: 2;
+}
+.chart-dot.tone-primary {
+  fill: var(--chart-primary);
+}
+.chart-dot.tone-muted {
+  fill: var(--chart-muted);
+}
+.chart-dot.active {
+  stroke-width: 2.5;
+}
+.chart-end-label {
+  fill: var(--label);
+  font-size: 12px;
+  font-weight: 700;
+}
+.chart-crosshair {
+  stroke: var(--label-2);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.chart-bar {
+  fill: var(--chart-primary);
+}
+.chart-bar.active {
+  opacity: 0.8;
+}
+.chart-hit {
+  fill: transparent;
+  outline: none;
+}
+.chart-tooltip {
+  position: absolute;
+  top: -6px;
+  transform: translate(-50%, -100%);
+  display: grid;
+  gap: 2px;
+  min-width: 96px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--cell);
+  border: 1px solid var(--separator);
+  box-shadow: var(--glass-shadow);
+  font-size: 0.8rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.chart-tooltip-date {
+  color: var(--label-2);
+}
+.chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-tooltip-row strong {
+  font-size: 0.95rem;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--label-2);
+}
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.key {
+  display: inline-block;
+  flex: none;
+}
+.key-line {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+.key-dots {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.key.tone-primary {
+  background: var(--chart-primary);
+}
+.key.tone-muted {
+  background: var(--chart-muted);
+}
+.chart-table {
+  margin-top: 6px;
+  font-size: 0.85rem;
+}
+.chart-table summary {
+  color: var(--label-2);
+  cursor: pointer;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+.chart-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.chart-table th,
+.chart-table td {
+  text-align: left;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--separator);
+}
+.chart-table th {
+  color: var(--label-2);
+  font-weight: 600;
+}
+.sparkline {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+/* ---------- Progress */
+
+.body-stats {
+  display: flex;
+  gap: 28px;
+  margin: 4px 0 12px;
+}
+.body-stats > span {
+  display: grid;
+}
+.stat-unit {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--label-2);
+  margin-left: 2px;
+}
+.entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.entry-list li {
+  display: grid;
+  grid-template-columns: 1fr auto 44px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--separator);
+}
+.lift-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lift-list li + li {
+  border-top: 1px solid var(--separator);
+}
+.lift-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  color: var(--label);
+  text-decoration: none;
 }

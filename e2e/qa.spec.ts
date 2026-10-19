@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { addExerciseToWorkout, addPushPullLegsPlan, confirmSheet, exerciseCard, finishWorkout, freezeClock, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 // Broader QA coverage: the less-travelled paths, phone hardware calls, accessibility and speed.

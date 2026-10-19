@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { confirmSheet, freezeClock } from './helpers'
 
 const shot = (page: Page, name: string) => page.screenshot({ path: `test-results/screens/${name}.png` })
@@ -111,7 +112,7 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
   await page.getByRole('link', { name: 'Barbell Bench Press - Medium Grip' }).tap()
   await expect(page.getByRole('heading', { level: 1, name: 'Barbell Bench Press - Medium Grip' })).toBeVisible()
   const history = page.getByRole('region', { name: 'History' })
-  await expect(page.getByText('Best est. 1RM', { exact: true })).toBeVisible()
+  await expect(page.locator('.stat-label', { hasText: 'Best est. 1RM' })).toBeVisible()
   await expect(history.getByText('82.5kg × 8', { exact: true })).toBeVisible()
   await expect(history.getByText('80kg × 8', { exact: true })).toBeVisible()
   await shot(page, 'exercise-history')

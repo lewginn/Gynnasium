@@ -28,6 +28,18 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - When adding or changing a synced table, update `src/lib/types.ts`, `src/db/db.ts` (new Dexie version), and add a new file under `supabase/migrations/` with RLS enabled.
 - Domain logic lives in `src/lib/` as pure functions with Vitest tests next to them.
 
+## Sync (src/sync/)
+- Local-first: the app only ever reads/writes Dexie. `syncOnce` pulls then pushes in the background (on start, every minute while open, when back online, after finishing or editing a workout). Never await sync in UI flows.
+- Push = rows with `updatedAt` ≥ the last push; pull = rows with `server_updated_at` > the last pull (server clock). Last write wins by `updatedAt`; the server trigger ignores writes older than the stored row.
+- Never hard-delete synced rows: set `deletedAt` (and `updatedAt`) so the delete syncs.
+- New synced table: add it to `SYNCED_TABLES` in `src/sync/mapping.ts` (parents before children) and give the migration `server_updated_at` + the `touch_server_updated_at` trigger.
+- The Supabase client is lazy-loaded (`src/sync/supabase.ts`) so it never slows app start. Builds without `VITE_SUPABASE_*` run local-only.
+- E2E builds point at a fake project (`https://gynnasium-test.supabase.co`); `e2e/sync.spec.ts` answers its requests with `page.route`.
+
+## Charts (src/components/charts/)
+- Plain SVG, no chart library. 2px lines, ringed end-dot labelled with the latest value, 1px recessive grid, crosshair + tooltip on touch/hover/arrow keys, legend only for 2+ series, a "Show as table" view.
+- Colours are `--chart-primary` / `--chart-muted` / `--chart-grid`, validated for colour-blind separation and contrast in both themes. `--chart-muted` is de-emphasis only (always with a legend).
+
 ## Checks before pushing
 ```sh
 npm run lint && npm run typecheck && npm test

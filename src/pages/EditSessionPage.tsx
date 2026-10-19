@@ -7,6 +7,7 @@ import ExercisePicker from '../components/ExercisePicker'
 import { db } from '../db/db'
 import { addSessionExercise, discardSession, loadSession, saveSessionEdits } from '../db/repo'
 import { useSettings } from '../db/settings'
+import { syncNow } from '../sync'
 import { formatDay } from '../lib/format'
 import { useConfirm } from '../state/confirm'
 
@@ -38,6 +39,7 @@ export default function EditSessionPage() {
     const pending = exercises.flatMap((e) => e.sets).filter((s) => !s.completedAt).length
     if (pending > 0 && !(await confirm({ title: 'Save changes?', message: `${pending} unticked ${pending === 1 ? 'set is' : 'sets are'} left out.`, action: 'Save' }))) return
     const kept = await saveSessionEdits(session.id)
+    void syncNow()
     navigate(kept ? `/history/${session.id}` : '/progress', { replace: true })
   }
 

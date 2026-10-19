@@ -25,3 +25,8 @@ export function formatWeight(weightKg: number, units: Units): string {
   const value = roundForDisplay(toDisplay(weightKg, units), units)
   return `${Number(value.toFixed(2))}${units}`
 }
+
+/** Estimates (1RM, averages) to one decimal: "120.3kg". Not snapped to plate increments like real lifts. */
+export function formatEstimate(weightKg: number, units: Units): string {
+  return `${Number(toDisplay(weightKg, units).toFixed(1))}${units}`
+}

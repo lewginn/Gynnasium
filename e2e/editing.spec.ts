@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { addExerciseToWorkout, addPushPullLegsPlan, confirmSheet, exerciseCard, finishWorkout, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 // Phase 1.5: bodyweight and timed exercises, reordering mid-workout, and editing finished workouts.
@@ -35,7 +36,7 @@ test('bodyweight: reps with optional added or assisted weight', async ({ page })
   await expect(page.getByRole('link', { name: 'Pullups' })).toContainText('+10kg × 8')
 
   await page.getByRole('link', { name: 'Pullups' }).tap()
-  await expect(page.getByText('Most reps')).toBeVisible()
+  await expect(page.locator('.stat-label', { hasText: 'Most reps' })).toBeVisible()
   await expect(page.getByText('+10kg', { exact: true })).toBeVisible()
 })
 

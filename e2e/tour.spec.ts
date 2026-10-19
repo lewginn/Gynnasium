@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { addPushPullLegsPlan, exerciseCard, finishWorkout, freezeClock, nav, setInput, typeInto, waitForLibrary } from './helpers'
 
 // Walks through every screen in dark mode and saves numbered screenshots to test-results/tour/,
@@ -6,6 +6,7 @@ import { addPushPullLegsPlan, exerciseCard, finishWorkout, freezeClock, nav, set
 test.use({ colorScheme: 'dark' })
 
 test('screen tour', async ({ page }) => {
+  test.setTimeout(90_000) // walks every screen; slow under parallel load
   let n = 0
   const snap = async (name: string) => {
     await page.waitForTimeout(350) // let sheets and banners finish animating in
@@ -41,7 +42,7 @@ test('screen tour', async ({ page }) => {
   for (const i of [1, 2, 3, 4]) await bench.getByRole('button', { name: `Complete set ${i}` }).tap()
   await finishWorkout(page)
   await page.getByRole('link', { name: 'Done' }).tap()
-  await page.clock.fastForward('48:00:00')
+  await page.clock.fastForward(2 * 86_400_000)
 
   // Second workout: pre-filled, a PR, the rest timer.
   await page.getByRole('button', { name: /Start Pull/ }).waitFor()
@@ -75,7 +76,7 @@ test('screen tour', async ({ page }) => {
   await nav(page, 'Progress')
   await snap('progress')
   await page.getByRole('link', { name: 'Barbell Bench Press - Medium Grip' }).first().tap()
-  await expect(page.getByText('Best est. 1RM', { exact: true })).toBeVisible()
+  await expect(page.locator('.stat-label', { hasText: 'Best est. 1RM' })).toBeVisible()
   await snap('exercise-history')
 
   await nav(page, 'Exercises')

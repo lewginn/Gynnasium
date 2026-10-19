@@ -9,6 +9,7 @@ import Sheet from '../components/Sheet'
 import { db } from '../db/db'
 import { addSessionExercise, alive, discardSession, finishSession, getActiveSession, loadSession } from '../db/repo'
 import { useSettings } from '../db/settings'
+import { syncNow } from '../sync'
 import { formatClock } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
 import { suggestExercises } from '../lib/suggest'
@@ -64,6 +65,7 @@ export default function WorkoutPage() {
     }
     restTimer.dismiss()
     const kept = await finishSession(session.id)
+    void syncNow() // back it up straight away if online
     navigate(kept ? `/history/${session.id}` : '/', { replace: true })
   }
 
