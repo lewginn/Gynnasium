@@ -27,6 +27,7 @@ export default defineConfig({
         // Precache the whole app (including the lazily-loaded exercise library) so it opens with no signal.
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\//,
@@ -42,7 +43,7 @@ export default defineConfig({
     }),
   ],
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'api/**/*.test.ts'],
     environment: 'node',
   },
 })
