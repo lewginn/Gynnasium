@@ -45,6 +45,8 @@ export interface Exercise {
   equipment: Equipment
   mechanic: 'compound' | 'isolation'
   level: string
+  /** strength | powerlifting | olympic weightlifting | strongman */
+  category?: string
   defaultRestSec: number
   image: string | null
   isCustom?: boolean
@@ -113,8 +115,12 @@ export interface SetLog extends Synced {
   weightKg: number
   reps: number
   rpe?: number
-  completedAt: number
+  /** Unset while the set is planned but not yet done. Only completed sets count towards history and PRs. */
+  completedAt?: number
+  prs?: PRType[]
 }
+
+export type PRType = 'max_weight' | 'max_e1rm' | 'max_reps_at_weight' | 'max_set_volume'
 
 export type BodyMetricType = 'bodyweight' | 'bodyfat' | 'waist' | 'chest' | 'arm' | 'thigh'
 

@@ -3,12 +3,13 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { db } from '../db/db'
 import { EQUIPMENT_LABELS, MUSCLES_BY_REGION, MUSCLE_LABELS, PATTERN_LABELS, REGION_LABELS } from '../lib/labels'
+import { rankSearchResults } from '../lib/suggest'
 import type { Equipment, Muscle, Region } from '../lib/types'
 
 const PAGE_SIZE = 60
 
 export default function ExercisesPage() {
-  const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray())
+  const exercises = useLiveQuery(async () => rankSearchResults(await db.exercises.toArray()))
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState<Region | null>(null)
   const [muscle, setMuscle] = useState<Muscle | null>(null)

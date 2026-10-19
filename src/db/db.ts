@@ -49,7 +49,7 @@ export class GymDB extends Dexie {
 export const db = new GymDB()
 
 /** Bump when src/data/exercises.json is regenerated so existing installs pick up the new library. */
-export const LIBRARY_VERSION = 1
+export const LIBRARY_VERSION = 2
 
 export async function ensureExerciseLibrary(database: GymDB = db): Promise<void> {
   const current = await database.kv.get('libraryVersion')

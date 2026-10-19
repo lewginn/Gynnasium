@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
 
-test('opens on Today with the exercise library loaded', async ({ page }) => {
+test('opens on Today with a way to get started', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
-  await expect(page.getByText(/\d{3} exercises available offline/)).toBeVisible()
-  await page.screenshot({ path: 'test-results/screens/today.png' })
+  await expect(page.getByRole('link', { name: 'Create a plan' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start empty workout' })).toBeVisible()
+  await page.screenshot({ path: 'test-results/screens/today-empty.png' })
 })
 
 test('bottom nav reaches every section', async ({ page }) => {
@@ -49,15 +50,15 @@ test('units setting persists across reloads', async ({ page }) => {
 })
 
 test('works offline after the first visit', async ({ page, context }) => {
-  await page.goto('/')
-  await expect(page.getByText(/exercises available offline/)).toBeVisible()
+  await page.goto('/exercises')
+  await expect.poll(async () => Number((await page.getByText(/^\d+ exercises$/).textContent())?.split(' ')[0])).toBeGreaterThan(500)
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready
   })
 
   await context.setOffline(true)
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Exercises' })).toBeVisible()
 
   // Deep links work offline too.
   await page.goto('/exercises')

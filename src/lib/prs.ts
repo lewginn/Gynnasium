@@ -1,7 +1,5 @@
 import { estimate1RM } from './e1rm'
-import type { SetLog } from './types'
-
-export type PRType = 'max_weight' | 'max_e1rm' | 'max_reps_at_weight' | 'max_set_volume'
+import type { PRType, SetLog } from './types'
 
 export const PR_LABELS: Record<PRType, string> = {
   max_weight: 'Heaviest weight',
