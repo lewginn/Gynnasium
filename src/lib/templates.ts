@@ -128,7 +128,7 @@ export const PLAN_TEMPLATES: PlanTemplate[] = [
           ex('Barbell_Bench_Press_-_Medium_Grip', 3, 5, 8),
           ex('Bent_Over_Barbell_Row', 3, 6, 10),
           ex('Lying_Leg_Curls', 2, 10, 15),
-          ex('Cable_Crunch', 3, 10, 15),
+          ex('Plank', 3, 30, 60), // seconds
         ],
       },
       {

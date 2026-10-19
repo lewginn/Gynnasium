@@ -1,3 +1,5 @@
+import type { LoggingType } from './types'
+
 /** 90 → "1:30", 3725 → "1:02:05". */
 export function formatClock(totalSec: number): string {
   const s = Math.max(0, Math.round(totalSec))
@@ -35,4 +37,9 @@ function startOfDay(ts: number) {
 
 export function repRange(min: number, max: number): string {
   return min === max ? `${min}` : `${min}–${max}`
+}
+
+/** A plan target: "3 × 8–12", or "3 × 30–60s" for timed exercises. */
+export function formatTarget(sets: number, min: number, max: number, logging: LoggingType): string {
+  return `${sets} × ${repRange(min, max)}${logging === 'time' ? 's' : ''}`
 }

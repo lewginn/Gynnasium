@@ -5,7 +5,7 @@ import { recentPRSets, recentSessions } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { formatDay } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
-import { formatWeight } from '../lib/units'
+import { formatSet } from '../lib/summary'
 
 export default function ProgressPage() {
   const settings = useSettings()
@@ -42,7 +42,7 @@ export default function ProgressPage() {
                 <Link to={`/exercises/${encodeURIComponent(exercise.id)}`}>
                   <strong>{exercise.name}</strong>
                 </Link>
-                : {formatWeight(set.weightKg, settings.units)} × {set.reps}
+                : {formatSet(set, settings, exercise.logging)}
                 <span className="muted small block">
                   {set.prs!.map((p) => PR_LABELS[p]).join(' · ')} · {formatDay(set.completedAt!)}
                 </span>

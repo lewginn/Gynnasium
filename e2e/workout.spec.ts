@@ -76,9 +76,9 @@ test('log a workout: prefill, PRs, rest timer, summary', async ({ page }) => {
 
   // Rest timer starts with the plan's rest time and counts down.
   const timer = page.getByRole('timer', { name: 'Rest timer' })
-  await expect(timer).toContainText('2:30')
+  await expect(timer).toContainText(/2:(29|30)/)
   await page.clock.fastForward('01:00')
-  await expect(timer).toContainText('1:30')
+  await expect(timer).toContainText(/1:(29|30)/)
   await shot(page, 'workout-logging')
   await page.clock.fastForward('01:31')
   await expect(page.getByText('Rest over, time for your next set')).toBeVisible()

@@ -1,6 +1,7 @@
 import { ChartLine, Dumbbell, House, ListChecks, Settings } from 'lucide-react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
+import EditSessionPage from './pages/EditSessionPage'
 import ExercisesPage from './pages/ExercisesPage'
 import PlanEditPage from './pages/PlanEditPage'
 import PlansPage from './pages/PlansPage'
@@ -20,7 +21,8 @@ const NAV = [
 
 export default function App() {
   // The workout screen is full-height: no bottom nav competing with the rest timer.
-  const inWorkout = useLocation().pathname === '/workout'
+  const path = useLocation().pathname
+  const inWorkout = path === '/workout' || path.endsWith('/edit')
 
   return (
     <div className="app">
@@ -29,6 +31,7 @@ export default function App() {
           <Route path="/" element={<TodayPage />} />
           <Route path="/workout" element={<WorkoutPage />} />
           <Route path="/history/:sessionId" element={<SessionPage />} />
+          <Route path="/history/:sessionId/edit" element={<EditSessionPage />} />
           <Route path="/plans" element={<PlansPage />} />
           <Route path="/plans/:planId" element={<PlanEditPage />} />
           <Route path="/exercises" element={<ExercisesPage />} />

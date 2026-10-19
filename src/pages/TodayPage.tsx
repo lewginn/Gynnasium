@@ -6,7 +6,7 @@ import Sheet from '../components/Sheet'
 import { db } from '../db/db'
 import { alive, getActiveSession, loadPlan, recentSessions, startSession } from '../db/repo'
 import { unlockAudio } from '../lib/feedback'
-import { formatClock, formatDay, formatRest, repRange } from '../lib/format'
+import { formatClock, formatDay, formatRest, formatTarget } from '../lib/format'
 import { useNow } from '../state/restTimer'
 
 export default function TodayPage() {
@@ -114,7 +114,7 @@ export default function TodayPage() {
                 <li key={pe.id}>
                   <span className="list-title">{exercise.name}</span>
                   <span className="list-meta">
-                    {pe.targetSets} × {repRange(pe.repMin, pe.repMax)} · rest {formatRest(pe.restSec)}
+                    {formatTarget(pe.targetSets, pe.repMin, pe.repMax, exercise.logging)} · rest {formatRest(pe.restSec)}
                   </span>
                 </li>
               ))}

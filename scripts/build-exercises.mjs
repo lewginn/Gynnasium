@@ -73,6 +73,17 @@ const PATTERNS = [
   [/bench|push-?up|chest press|dip|floor press|(incline|decline).*press/i, 'horizontal_push'],
 ]
 
+// How sets are logged: weight × reps (default), bodyweight ± added weight × reps, or held for time.
+const TIMED = /plank|\bhold\b|wall sit|dead hang|farmer|carry|yoke|l-sit|isometric/i
+const BODYWEIGHT_NAMES = /pull-?ups?\b|chin-?up|\bdips?\b|push-?ups?|inverted row|muscle.?up|pistol|hanging leg raise/i
+
+function logging(ex, equipment) {
+  if (TIMED.test(ex.name) && !/push/i.test(ex.name)) return 'time'
+  if (equipment === 'bodyweight') return 'bodyweight'
+  if (['other', 'band'].includes(equipment) && BODYWEIGHT_NAMES.test(ex.name)) return 'bodyweight'
+  return 'weight_reps'
+}
+
 function movementPattern(ex) {
   for (const [re, pattern] of PATTERNS) if (re.test(ex.name)) return pattern
   return ex.mechanic === 'isolation' ? 'isolation' : 'other'
@@ -84,6 +95,7 @@ const out = raw
   .map((ex) => {
     const primaryMuscles = ex.primaryMuscles.map((m) => MUSCLE[m]).filter(Boolean)
     const mechanic = ex.mechanic ?? 'compound'
+    const equipment = EQUIPMENT[ex.equipment] ?? 'other'
     return {
       id: ex.id,
       name: ex.name,
@@ -91,7 +103,8 @@ const out = raw
       secondaryMuscles: ex.secondaryMuscles.map((m) => MUSCLE[m]).filter(Boolean),
       region: REGION[primaryMuscles[0]] ?? 'upper',
       movementPattern: movementPattern(ex),
-      equipment: EQUIPMENT[ex.equipment] ?? 'other',
+      equipment,
+      logging: logging(ex, equipment),
       mechanic,
       level: ex.level,
       category: ex.category,

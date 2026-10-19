@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, Trophy } from 'lucide-react'
+import { ChevronLeft, Pencil, Trophy } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { loadSession } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { formatDay, formatDuration } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
-import { countsForStats, summariseSets, totalVolumeKg } from '../lib/summary'
+import { countsForStats, formatSet, summariseSets, totalVolumeKg } from '../lib/summary'
 import { formatWeight } from '../lib/units'
 
 /** A finished workout: shown straight after "Finish", and from history. */
@@ -25,6 +25,7 @@ export default function SessionPage() {
 
   const { session, exercises } = detail
   const allSets = exercises.flatMap((e) => e.sets)
+  const weightedSets = exercises.filter((e) => e.exercise.logging === 'weight_reps').flatMap((e) => e.sets)
   const prSets = exercises.flatMap(({ exercise, sets }) => sets.filter((s) => s.prs?.length).map((set) => ({ exercise, set })))
   const workingSets = allSets.filter(countsForStats).length
 
@@ -51,7 +52,7 @@ export default function SessionPage() {
           <span className="stat-label">Sets</span>
         </div>
         <div className="stat">
-          <span className="stat-value">{formatWeight(totalVolumeKg(allSets), settings.units).replace(/\.\d+/, '')}</span>
+          <span className="stat-value">{formatWeight(totalVolumeKg(weightedSets), settings.units).replace(/\.\d+/, '')}</span>
           <span className="stat-label">Volume</span>
         </div>
       </div>
@@ -64,7 +65,7 @@ export default function SessionPage() {
           <ul className="plain-list">
             {prSets.map(({ exercise, set }) => (
               <li key={set.id}>
-                <strong>{exercise.name}</strong>: {formatWeight(set.weightKg, settings.units)} × {set.reps}
+                <strong>{exercise.name}</strong>: {formatSet(set, settings, exercise.logging)}
                 <span className="muted small block">{set.prs!.map((p) => PR_LABELS[p]).join(' · ')}</span>
               </li>
             ))}
@@ -77,7 +78,7 @@ export default function SessionPage() {
           <li key={se.id}>
             <Link to={`/exercises/${encodeURIComponent(exercise.id)}`} className="list-row">
               <span className="list-title">{exercise.name}</span>
-              <span className="list-meta">{summariseSets(sets.filter((s) => s.setType !== 'warmup'), settings)}</span>
+              <span className="list-meta">{summariseSets(sets.filter((s) => s.setType !== 'warmup'), settings, exercise.logging)}</span>
             </Link>
           </li>
         ))}
@@ -85,6 +86,9 @@ export default function SessionPage() {
 
       <Link to="/" className="btn btn-primary btn-block">
         Done
+      </Link>
+      <Link to={`/history/${session.id}/edit`} className="btn btn-block">
+        <Pencil size={18} aria-hidden /> Edit workout
       </Link>
     </>
   )

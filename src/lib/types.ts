@@ -35,6 +35,14 @@ export type Equipment = 'barbell' | 'dumbbell' | 'cable' | 'machine' | 'bodyweig
 
 export type Units = 'kg' | 'lb'
 
+/**
+ * How sets of an exercise are logged:
+ * - weight_reps: weight × reps (barbell, dumbbell, machine…)
+ * - bodyweight: reps, with optional added weight (positive) or assistance (negative)
+ * - time: seconds held or carried, with optional weight (plank, farmer's walk)
+ */
+export type LoggingType = 'weight_reps' | 'bodyweight' | 'time'
+
 export interface Exercise {
   id: string
   name: string
@@ -43,6 +51,7 @@ export interface Exercise {
   region: Region
   movementPattern: MovementPattern
   equipment: Equipment
+  logging: LoggingType
   mechanic: 'compound' | 'isolation'
   level: string
   /** strength | powerlifting | olympic weightlifting | strongman */
@@ -79,6 +88,7 @@ export interface PlanExercise extends Synced {
   order: number
   supersetGroup?: string
   targetSets: number
+  /** Target range: reps, or seconds for timed exercises. */
   repMin: number
   repMax: number
   targetRpe?: number
@@ -111,16 +121,18 @@ export interface SetLog extends Synced {
   exerciseId: string
   setNumber: number
   setType: SetType
-  /** Always stored in kg; converted for display. */
+  /** Always stored in kg; converted for display. For bodyweight exercises it's the added weight (negative = assisted). */
   weightKg: number
   reps: number
+  /** Seconds, for timed exercises. */
+  durationSec?: number
   rpe?: number
   /** Unset while the set is planned but not yet done. Only completed sets count towards history and PRs. */
   completedAt?: number
   prs?: PRType[]
 }
 
-export type PRType = 'max_weight' | 'max_e1rm' | 'max_reps_at_weight' | 'max_set_volume'
+export type PRType = 'max_weight' | 'max_e1rm' | 'max_reps_at_weight' | 'max_set_volume' | 'max_duration'
 
 export type BodyMetricType = 'bodyweight' | 'bodyfat' | 'waist' | 'chest' | 'arm' | 'thigh'
 

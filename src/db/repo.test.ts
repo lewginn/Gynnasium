@@ -6,6 +6,7 @@ import {
   addPlanDay,
   addPlanExercise,
   addSessionExercise,
+  addSet,
   completeSet,
   createPlan,
   createPlanFromTemplate,
@@ -13,9 +14,13 @@ import {
   exerciseHistory,
   finishSession,
   getActiveSession,
+  loadExercise,
   loadPlan,
   loadSession,
   movePlanExercise,
+  moveSessionExercise,
+  saveSessionEdits,
+  setLoggingOverride,
   setActivePlan,
   startSession,
   swapSessionExercise,
@@ -175,5 +180,78 @@ describe('workouts', () => {
 
     const history = await exerciseHistory('Barbell_Squat')
     expect(history.map((h) => h.sets.map((x) => x.weightKg))).toEqual([[105], [100]])
+  })
+})
+
+describe('bodyweight and timed', () => {
+  it('timed exercises are pre-filled with seconds, then from last time', async () => {
+    const s1 = await startSession()
+    await addSessionExercise(s1, await exercise('Plank'))
+    let [first] = (await loadSession(s1))!.exercises[0].sets
+    expect(first.durationSec).toBe(30)
+    await updateSet(first.id, { durationSec: 75 })
+    await completeSet(first.id)
+    await finishSession(s1)
+
+    const s2 = await startSession()
+    await addSessionExercise(s2, await exercise('Plank'))
+    ;[first] = (await loadSession(s2))!.exercises[0].sets
+    expect(first.durationSec).toBe(75)
+    await updateSet(first.id, { durationSec: 90 })
+    expect(await completeSet(first.id)).toEqual(['max_duration'])
+  })
+
+  it('"log as" overrides change how an exercise is treated', async () => {
+    expect((await loadExercise('Leg_Press'))!.logging).toBe('weight_reps')
+    await setLoggingOverride('Leg_Press', 'time')
+    expect((await loadExercise('Leg_Press'))!.logging).toBe('time')
+    await setLoggingOverride('Leg_Press', 'weight_reps') // back to the library default: override removed
+    expect(await db.kv.get('loggingOverrides')).toEqual({ key: 'loggingOverrides', value: {} })
+  })
+})
+
+describe('reordering and editing workouts', () => {
+  it('moves exercises within a workout', async () => {
+    const sessionId = await startSession()
+    const a = await addSessionExercise(sessionId, await exercise('Barbell_Squat'))
+    await addSessionExercise(sessionId, await exercise('Leg_Press'))
+    await moveSessionExercise(a, 1)
+    expect((await loadSession(sessionId))!.exercises.map((e) => e.exercise.id)).toEqual(['Leg_Press', 'Barbell_Squat'])
+  })
+
+  it('editing an old workout re-checks PRs in later ones', async () => {
+    const first = await logWorkout('Barbell_Squat', [[100, 5]])
+    const second = await logWorkout('Barbell_Squat', [[105, 5]])
+    expect(second.prs[0]).toContain('max_weight')
+
+    // Turns out the first workout was 110kg: the second is no longer a PR.
+    const [old] = (await loadSession(first.sessionId))!.exercises[0].sets
+    await updateSet(old.id, { weightKg: 110 })
+    expect(await saveSessionEdits(first.sessionId)).toBe(true)
+    const [later] = (await loadSession(second.sessionId))!.exercises[0].sets
+    expect(later.prs).toEqual([])
+
+    // Delete the first workout entirely: the second becomes the baseline.
+    await discardSession(first.sessionId)
+    expect((await db.setLogs.get(later.id))!.prs).toEqual([])
+    expect(await exerciseHistory('Barbell_Squat')).toHaveLength(1)
+  })
+
+  it('sets ticked while editing a finished workout are filed under that workout', async () => {
+    const { sessionId } = await logWorkout('Barbell_Squat', [[100, 5]])
+    const endedAt = (await db.sessions.get(sessionId))!.endedAt
+    const seId = (await loadSession(sessionId))!.exercises[0].se.id
+    await addSet(seId)
+    const added = (await loadSession(sessionId))!.exercises[0].sets.at(-1)!
+    await completeSet(added.id)
+    expect((await db.setLogs.get(added.id))!.completedAt).toBe(endedAt)
+  })
+
+  it('saving an edit with nothing left deletes the workout', async () => {
+    const { sessionId } = await logWorkout('Barbell_Squat', [[100, 5]])
+    const [only] = (await loadSession(sessionId))!.exercises[0].sets
+    await uncompleteSet(only.id)
+    expect(await saveSessionEdits(sessionId)).toBe(false)
+    expect(await loadSession(sessionId)).toBeNull()
   })
 })

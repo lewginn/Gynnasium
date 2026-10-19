@@ -22,7 +22,7 @@ import {
   updatePlanExercise,
   type PlanDetail,
 } from '../db/repo'
-import { formatRest, repRange } from '../lib/format'
+import { formatRest, formatTarget } from '../lib/format'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { KEY_MUSCLES, suggestExercises, weeklySetsByMuscle } from '../lib/suggest'
 import type { Exercise, Muscle, PlanExercise } from '../lib/types'
@@ -269,13 +269,15 @@ function PlanExerciseRow({
   onToggle: () => void
 }) {
   const update = (patch: Parameters<typeof updatePlanExercise>[1]) => updatePlanExercise(pe.id, patch)
+  const timed = exercise.logging === 'time'
+  const unit = timed ? 'sec' : 'reps'
   return (
     <li className={`plan-exercise ${expanded ? 'expanded' : ''}`}>
       <button className="plan-exercise-summary" onClick={onToggle} aria-expanded={expanded}>
         <span>
           <span className="list-title">{exercise.name}</span>
           <span className="list-meta">
-            {pe.targetSets} × {repRange(pe.repMin, pe.repMax)} · rest {formatRest(pe.restSec)}
+            {formatTarget(pe.targetSets, pe.repMin, pe.repMax, exercise.logging)} · rest {formatRest(pe.restSec)}
           </span>
         </span>
         <ChevronDown size={18} aria-hidden className="chevron" />
@@ -285,22 +287,22 @@ function PlanExerciseRow({
           <div className="editor-grid">
             <span>Sets</span>
             <Stepper label="Sets" value={pe.targetSets} step={1} min={1} max={10} onChange={(targetSets) => update({ targetSets })} />
-            <span>Min reps</span>
+            <span>Min {unit}</span>
             <Stepper
-              label="Min reps"
+              label={`Min ${unit}`}
               value={pe.repMin}
-              step={1}
+              step={timed ? 5 : 1}
               min={1}
-              max={50}
+              max={timed ? 600 : 50}
               onChange={(repMin) => update({ repMin, repMax: Math.max(repMin, pe.repMax) })}
             />
-            <span>Max reps</span>
+            <span>Max {unit}</span>
             <Stepper
-              label="Max reps"
+              label={`Max ${unit}`}
               value={pe.repMax}
-              step={1}
+              step={timed ? 5 : 1}
               min={1}
-              max={50}
+              max={timed ? 600 : 50}
               onChange={(repMax) => update({ repMax, repMin: Math.min(repMax, pe.repMin) })}
             />
             <span>Rest</span>
