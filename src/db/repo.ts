@@ -1,7 +1,11 @@
+import { estimate1RM } from '../lib/e1rm'
+import { weeklyCounts, type Point } from '../lib/metrics'
 import { detectPRs } from '../lib/prs'
 import { inferFocusMuscles } from '../lib/suggest'
 import type { PlanTemplate } from '../lib/templates'
 import type {
+  BodyMetric,
+  BodyMetricType,
   Exercise,
   LoggingType,
   Plan,
@@ -288,7 +292,9 @@ export async function swapSessionExercise(sessionExerciseId: string, newExercise
       updatedAt: now(),
     })
     // Completed sets keep their original exercise; they really were done on it.
-    await db.setLogs.bulkDelete(pending.map((s) => s.id))
+    // Soft-deleted (not removed) so the deletion syncs.
+    const t = now()
+    await db.setLogs.where('id').anyOf(pending.map((s) => s.id)).modify({ deletedAt: t, updatedAt: t })
     await db.setLogs.bulkAdd(refill.map((s, i) => ({ ...s, setNumber: done.length + i + 1 })))
   })
 }
@@ -416,7 +422,7 @@ async function tidySession(sessionId: string, t: number): Promise<boolean> {
   for (const se of ses) {
     const sets = await db.setLogs.where('sessionExerciseId').equals(se.id).filter(alive).toArray()
     const pending = sets.filter((s) => !s.completedAt)
-    await db.setLogs.bulkDelete(pending.map((s) => s.id))
+    await db.setLogs.where('id').anyOf(pending.map((s) => s.id)).modify({ deletedAt: t, updatedAt: t })
     if (pending.length === sets.length) await db.sessionExercises.update(se.id, { deletedAt: t, updatedAt: t })
     else anyDone = true
   }
@@ -535,7 +541,10 @@ export async function setLoggingOverride(exerciseId: string, logging: LoggingTyp
     const libraryDefault = (await db.exercises.get(exerciseId))?.logging ?? 'weight_reps'
     if (logging === libraryDefault) delete overrides[exerciseId]
     else overrides[exerciseId] = logging
-    await db.kv.put({ key: 'loggingOverrides', value: overrides })
+    await db.kv.bulkPut([
+      { key: 'loggingOverrides', value: overrides },
+      { key: 'settingsUpdatedAt', value: now() }, // overrides sync with settings
+    ])
   })
   await recomputePRs([exerciseId])
 }
@@ -604,4 +613,68 @@ export async function recentPRSets(limit = 10): Promise<{ set: SetLog; exercise:
   const top = sets.slice(0, limit)
   const exercises = await loadExercises(top.map((s) => s.exerciseId))
   return top.filter((s) => exercises.has(s.exerciseId)).map((set) => ({ set, exercise: exercises.get(set.exerciseId)! }))
+}
+
+// ---------------------------------------------------------------- Body metrics & trends
+
+export async function addBodyMetric(type: BodyMetricType, value: number, date: string): Promise<string> {
+  const id = uuid()
+  await db.bodyMetrics.add({ id, type, value, date, source: 'manual', updatedAt: now() })
+  return id
+}
+
+export async function deleteBodyMetric(id: string) {
+  await db.bodyMetrics.update(id, { deletedAt: now(), updatedAt: now() })
+}
+
+export async function bodyMetrics(type?: BodyMetricType): Promise<BodyMetric[]> {
+  const rows = (await db.bodyMetrics.toArray()).filter((m) => alive(m) && (!type || m.type === type))
+  return rows.sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt - a.updatedAt)
+}
+
+/** The headline number per workout: best est. 1RM, most reps (bodyweight) or longest time (timed). */
+export function sessionBest(sets: SetLog[], logging: LoggingType): number | null {
+  const working = sets.filter((s) => s.completedAt && s.setType !== 'warmup')
+  if (working.length === 0) return null
+  if (logging === 'time') return Math.max(...working.map((s) => s.durationSec ?? 0))
+  if (logging === 'bodyweight') return Math.max(...working.map((s) => s.reps))
+  const best = Math.max(...working.map((s) => estimate1RM(s.weightKg, s.reps, s.rpe) ?? 0))
+  return best > 0 ? best : null
+}
+
+export async function exerciseTrend(exerciseId: string): Promise<Point[]> {
+  const logging = await loggingOf(exerciseId)
+  const history = await exerciseHistory(exerciseId)
+  return history
+    .map(({ session, sets }) => ({ x: session.startedAt, y: sessionBest(sets, logging) }))
+    .filter((p): p is Point => p.y !== null)
+    .sort((a, b) => a.x - b.x)
+}
+
+/** Your most-trained weighted lifts recently, with their est. 1RM trend. */
+export async function topLifts(limit = 4, sinceDays = 90): Promise<{ exercise: Exercise; trend: Point[] }[]> {
+  const since = now() - sinceDays * 86_400_000
+  const sets = await db.setLogs.filter((s) => alive(s) && !!s.completedAt && s.completedAt >= since && s.setType !== 'warmup').toArray()
+  const sessionsPer = new Map<string, Set<string>>()
+  for (const s of sets) sessionsPer.set(s.exerciseId, (sessionsPer.get(s.exerciseId) ?? new Set()).add(s.sessionExerciseId))
+  const exercises = await loadExercises([...sessionsPer.keys()])
+  const ranked = [...sessionsPer.entries()]
+    .filter(([id]) => exercises.get(id)?.logging === 'weight_reps')
+    .sort((a, b) => b[1].size - a[1].size)
+    .slice(0, limit)
+  return Promise.all(
+    ranked.map(async ([id]) => ({ exercise: exercises.get(id)!, trend: (await exerciseTrend(id)).filter((p) => p.x >= since) })),
+  )
+}
+
+/** Working sets completed per week, for the last `weeks` weeks. */
+export async function weeklySets(weeks = 12): Promise<Point[]> {
+  const sets = await db.setLogs.filter((s) => alive(s) && !!s.completedAt && s.setType !== 'warmup').toArray()
+  const ses = new Map((await db.sessionExercises.bulkGet([...new Set(sets.map((s) => s.sessionExerciseId))])).filter(alive).map((se) => [se.id, se]))
+  const live = new Set((await db.sessions.bulkGet([...new Set([...ses.values()].map((se) => se.sessionId))])).filter(alive).map((s) => s.id))
+  const counted = sets.filter((s) => live.has(ses.get(s.sessionExerciseId)?.sessionId ?? ''))
+  return weeklyCounts(
+    counted.map((s) => s.completedAt!),
+    weeks,
+  )
 }

@@ -7,6 +7,7 @@ import ExercisePicker from '../components/ExercisePicker'
 import { db } from '../db/db'
 import { addSessionExercise, discardSession, loadSession, saveSessionEdits } from '../db/repo'
 import { useSettings } from '../db/settings'
+import { syncNow } from '../sync'
 import { formatDay } from '../lib/format'
 
 /**
@@ -36,6 +37,7 @@ export default function EditSessionPage() {
     const pending = exercises.flatMap((e) => e.sets).filter((s) => !s.completedAt).length
     if (pending > 0 && !confirm(`${pending} sets aren't ticked off and won't be saved. Save anyway?`)) return
     const kept = await saveSessionEdits(session.id)
+    void syncNow()
     navigate(kept ? `/history/${session.id}` : '/progress', { replace: true })
   }
 

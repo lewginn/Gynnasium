@@ -35,7 +35,7 @@ test('bodyweight: reps with optional added or assisted weight', async ({ page })
   await expect(page.getByRole('link', { name: 'Pullups' })).toContainText('+10kg × 8')
 
   await page.getByRole('link', { name: 'Pullups' }).tap()
-  await expect(page.getByText('Most reps')).toBeVisible()
+  await expect(page.locator('.stat-label', { hasText: 'Most reps' })).toBeVisible()
   await expect(page.getByText('+10kg', { exact: true })).toBeVisible()
 })
 
@@ -136,5 +136,5 @@ test('edit a finished workout: change, add, remove, then delete it', async ({ pa
   page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Delete workout' }).tap()
   await expect(page.getByRole('heading', { level: 1, name: 'Progress' })).toBeVisible()
-  await expect(page.getByText('Nothing to show yet')).toBeVisible()
+  await expect(page.getByText('No workouts yet')).toBeVisible()
 })

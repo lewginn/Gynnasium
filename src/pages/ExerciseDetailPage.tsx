@@ -1,13 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Trophy } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { exerciseHistory, loadExercise, setLoggingOverride } from '../db/repo'
+import LineChart from '../components/charts/LineChart'
+import { exerciseHistory, exerciseTrend, loadExercise, setLoggingOverride } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { formatDay, formatRest } from '../lib/format'
 import { EQUIPMENT_LABELS, MUSCLE_LABELS, PATTERN_LABELS } from '../lib/labels'
 import { bestE1RM, countsForStats, formatAddedWeight, formatDuration, summariseSets } from '../lib/summary'
 import type { LoggingType, SetLog, Settings } from '../lib/types'
-import { formatWeight } from '../lib/units'
+import { formatEstimate, formatWeight, toDisplay } from '../lib/units'
 
 const IMAGE_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/'
 
@@ -17,6 +18,7 @@ export default function ExerciseDetailPage() {
   const settings = useSettings()
   const exercise = useLiveQuery(() => loadExercise(id), [id])
   const history = useLiveQuery(() => exerciseHistory(id), [id])
+  const trend = useLiveQuery(() => exerciseTrend(id), [id, exercise?.logging])
 
   if (exercise === undefined) return <p className="muted">Loading…</p>
   if (exercise === null)
@@ -52,6 +54,27 @@ export default function ExerciseDetailPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {trend && trend.length > 1 && (
+        <section className="card" aria-labelledby="trend-heading">
+          <h2 id="trend-heading">
+            {TREND_TITLE[exercise.logging]}
+            {exercise.logging === 'weight_reps' && <span className="muted"> ({settings.units})</span>}
+          </h2>
+          <LineChart
+            title={`${exercise.name}: ${TREND_TITLE[exercise.logging].toLowerCase()} per workout`}
+            series={[
+              {
+                label: TREND_TITLE[exercise.logging],
+                points: exercise.logging === 'weight_reps' ? trend.map((p) => ({ ...p, y: toDisplay(p.y, settings.units) })) : trend,
+                style: 'line',
+                tone: 'primary',
+              },
+            ]}
+            formatY={(v) => (exercise.logging === 'time' ? formatDuration(v) : exercise.logging === 'bodyweight' ? `${v}` : `${Number(v.toFixed(1))}`)}
+          />
+        </section>
       )}
 
       <section className="card" aria-labelledby="history-heading">
@@ -121,6 +144,12 @@ export default function ExerciseDetailPage() {
   )
 }
 
+const TREND_TITLE: Record<LoggingType, string> = {
+  weight_reps: 'Best est. 1RM',
+  bodyweight: 'Most reps',
+  time: 'Longest time',
+}
+
 const LOGGING_OPTIONS: [LoggingType, string][] = [
   ['weight_reps', 'Weight × reps'],
   ['bodyweight', 'Bodyweight'],
@@ -149,7 +178,7 @@ function statsFor(logging: LoggingType, sets: SetLog[], settings: Settings): { l
     ]
   const e1rm = bestE1RM(sets)
   return [
-    { label: 'Best est. 1RM', value: e1rm ? formatWeight(e1rm, settings.units).replace(/(\.\d)\d+/, '$1') : '–' },
+    { label: 'Best est. 1RM', value: e1rm ? formatEstimate(e1rm, settings.units) : '–' },
     { label: 'Heaviest', value: formatWeight(heaviest, settings.units) },
   ]
 }

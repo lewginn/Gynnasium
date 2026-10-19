@@ -10,6 +10,9 @@ export function useSettings(): Settings {
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
   await db.transaction('rw', db.kv, async () => {
     const stored = (await db.kv.get('settings'))?.value as Partial<Settings> | undefined
-    await db.kv.put({ key: 'settings', value: { ...DEFAULT_SETTINGS, ...stored, ...patch } })
+    await db.kv.bulkPut([
+      { key: 'settings', value: { ...DEFAULT_SETTINGS, ...stored, ...patch } },
+      { key: 'settingsUpdatedAt', value: Date.now() }, // for sync: settings are one last-write-wins row
+    ])
   })
 }
