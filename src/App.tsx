@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Icon, { type IconName } from './components/Icon'
+import LoginScreen from './components/LoginScreen'
 import WorkoutBar from './components/WorkoutBar'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import EditSessionPage from './pages/EditSessionPage'
@@ -11,6 +12,7 @@ import SessionPage from './pages/SessionPage'
 import SettingsPage from './pages/SettingsPage'
 import TodayPage from './pages/TodayPage'
 import WorkoutPage from './pages/WorkoutPage'
+import { useSync } from './sync'
 
 const NAV: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: 'Today', icon: 'today' },
@@ -24,6 +26,10 @@ export default function App() {
   // The workout screen is full-height: no bottom nav competing with the rest timer.
   const path = useLocation().pathname
   const inWorkout = path === '/workout' || path.endsWith('/edit')
+  const sync = useSync()
+
+  // Signing in is required: nothing else is reachable until then. Builds without Supabase (local dev) skip it.
+  if (sync.configured && !sync.account) return <LoginScreen />
 
   return (
     <div className="app">

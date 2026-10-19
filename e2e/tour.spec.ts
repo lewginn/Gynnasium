@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { addPushPullLegsPlan, exerciseCard, finishWorkout, freezeClock, nav, setInput, typeInto, waitForLibrary } from './helpers'
 
 // Walks through every screen in dark mode and saves numbered screenshots to test-results/tour/,

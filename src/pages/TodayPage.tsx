@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, CloudUpload, Play, Plus } from 'lucide-react'
+import { ChevronRight, Play, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Sheet from '../components/Sheet'
@@ -8,7 +8,6 @@ import { alive, getActiveSession, loadPlan, recentSessions, startSession } from 
 import { unlockAudio } from '../lib/feedback'
 import { formatClock, formatDay, formatRest, formatTarget } from '../lib/format'
 import { useNow } from '../state/restTimer'
-import { useSync } from '../sync'
 
 export default function TodayPage() {
   const navigate = useNavigate()
@@ -20,7 +19,6 @@ export default function TodayPage() {
   const recent = useLiveQuery(() => recentSessions(5))
   const now = useNow(active ? 1000 : null)
   const [previewDayId, setPreviewDayId] = useState<string | null>(null)
-  const sync = useSync()
   const preview = plan?.days.find((d) => d.day.id === previewDayId)
 
   // Suggest the day after the one you did last.
@@ -131,16 +129,6 @@ export default function TodayPage() {
             Edit plan
           </Link>
         </Sheet>
-      )}
-
-      {sync.configured && sync.ready && !sync.user && recent && recent.length > 0 && (
-        <Link to="/settings" className="card nudge">
-          <CloudUpload size={22} aria-hidden />
-          <span>
-            <span className="list-title">Back up your workouts</span>
-            <span className="list-meta">Sign in so they're safe if you lose or change your phone.</span>
-          </span>
-        </Link>
       )}
 
       {recent && recent.length > 0 && (

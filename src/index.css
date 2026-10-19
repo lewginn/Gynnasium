@@ -1536,14 +1536,8 @@ select.input {
   }
 }
 
-.nudge {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border-style: dashed;
-}
-.nudge svg {
-  color: var(--tint);
+.login {
+  padding-top: calc(env(safe-area-inset-top) + 48px);
 }
 
 /* ---------- Charts */
