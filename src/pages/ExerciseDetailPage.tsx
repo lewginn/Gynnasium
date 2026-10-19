@@ -5,7 +5,7 @@ import { exerciseHistory, loadExercise, setLoggingOverride } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { formatDay, formatRest } from '../lib/format'
 import { EQUIPMENT_LABELS, MUSCLE_LABELS, PATTERN_LABELS } from '../lib/labels'
-import { bestE1RM, countsForStats, formatAddedWeight, formatDuration, summariseSets } from '../lib/summary'
+import { bestE1RM, countsForStats, formatAddedWeight, formatSeconds, summariseSets } from '../lib/summary'
 import type { LoggingType, SetLog, Settings } from '../lib/types'
 import { formatWeight } from '../lib/units'
 
@@ -65,7 +65,7 @@ export default function ExerciseDetailPage() {
                 </Link>
                 <span>
                   {summariseSets(sets.filter((s) => s.setType !== 'warmup'), settings, exercise.logging)}
-                  {sets.some((s) => s.prs?.length) && <Trophy size={14} className="pr-icon" aria-label="PR" />}
+                  {sets.some((s) => s.prs?.length) && <Trophy size={14} className="pr-mark" aria-label="PR" />}
                 </span>
               </li>
             ))}
@@ -139,7 +139,7 @@ function statsFor(logging: LoggingType, sets: SetLog[], settings: Settings): { l
   const heaviest = Math.max(...sets.map((s) => s.weightKg))
   if (logging === 'time')
     return [
-      { label: 'Longest', value: formatDuration(Math.max(...sets.map((s) => s.durationSec ?? 0))) },
+      { label: 'Longest', value: formatSeconds(Math.max(...sets.map((s) => s.durationSec ?? 0))) },
       { label: 'Heaviest', value: heaviest > 0 ? formatWeight(heaviest, settings.units) : '–' },
     ]
   if (logging === 'bodyweight')

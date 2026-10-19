@@ -1,17 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import {
-  addExerciseToWorkout,
-  exerciseCard,
-  finishWorkout,
-  freezeClock,
-  nav,
-  setInput,
-  shot,
-  typeInto,
-  addPushPullLegsPlan,
-  waitForLibrary,
-} from './helpers'
+import { addExerciseToWorkout, addPushPullLegsPlan, confirmSheet, exerciseCard, finishWorkout, freezeClock, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 // Broader QA coverage: the less-travelled paths, phone hardware calls, accessibility and speed.
 
@@ -63,7 +52,7 @@ test.describe('phone hardware', () => {
     expect((await hw()).filter((c) => c === 'beep')).toHaveLength(0)
 
     await page.clock.fastForward('01:31')
-    await expect(page.getByText('Rest over, time for your next set')).toBeVisible()
+    await expect(page.getByText('Rest over', { exact: true })).toBeVisible()
     const calls = await hw()
     expect(calls.filter((c) => c === 'beep')).toHaveLength(3)
     expect(calls).toContain('vibrate:[300,150,300,150,300]')
@@ -142,12 +131,12 @@ test.describe('sets', () => {
     // A heavy warm-up isn't a PR.
     await typeInto(squat.getByRole('textbox', { name: 'Set W weight', exact: true }), '140')
     await squat.getByRole('button', { name: 'Complete set W' }).tap()
-    await expect(page.getByRole('status').filter({ hasText: 'New PR!' })).toHaveCount(0)
+    await expect(page.getByRole('status').filter({ hasText: 'New PR' })).toHaveCount(0)
 
     // A heavier working set is.
     await typeInto(setInput(squat, 1, 'weight'), '105')
     await squat.getByRole('button', { name: 'Complete set 1' }).tap()
-    await expect(page.getByRole('status').filter({ hasText: 'New PR!' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'New PR' })).toBeVisible()
     await shot(page, 'qa-sets')
   })
 
@@ -203,23 +192,24 @@ test.describe('workouts', () => {
     await page.getByRole('button', { name: 'Remove from workout' }).tap()
     await expect(exerciseCard(page, 'Side Lateral Raise')).toHaveCount(0)
 
-    page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'Discard workout' }).tap()
+    await confirmSheet(page, 'Discard workout')
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect(page.getByText('Workout in progress')).toHaveCount(0)
     await expect(page.getByText('Recent workouts')).toHaveCount(0)
 
     // Finish with nothing ticked: confirm discards it.
     await page.getByRole('button', { name: 'Start Push' }).tap()
-    page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'Finish' }).tap()
+    await confirmSheet(page, 'Discard workout')
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect(page.getByText('Recent workouts')).toHaveCount(0)
 
     // Cancelling the confirm keeps you in the workout.
     await page.getByRole('button', { name: 'Start Push' }).tap()
-    page.once('dialog', (d) => d.dismiss())
     await page.getByRole('button', { name: 'Finish' }).tap()
+    await confirmSheet(page, 'Cancel')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByRole('heading', { level: 1, name: 'Push' })).toBeVisible()
   })
 
@@ -255,8 +245,8 @@ test.describe('workouts', () => {
 
     // Leave and discard: nothing saved.
     await page.getByRole('button', { name: 'Leave workout' }).tap()
-    page.once('dialog', (d) => d.accept())
-    await page.getByRole('button', { name: /Discard workout/ }).last().tap()
+    // The leave sheet already explains discarding, so there's no second confirmation.
+    await page.getByRole('dialog').getByRole('button', { name: /Discard workout/ }).tap()
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect(page.getByText('Workout in progress')).toHaveCount(0)
     await expect(page.getByText('Recent workouts')).toHaveCount(0)
@@ -271,12 +261,12 @@ test.describe('workouts', () => {
       ['Pull', 'Pullups', 'Legs'],
       ['Legs', 'Barbell Squat', 'Push'],
     ]) {
-      await expect(page.getByRole('button', { name: `${day}: view exercises` })).toContainText('Up next')
+      await expect(page.getByRole('region', { name: 'Up next' }).getByRole('heading', { name: day, exact: true })).toBeVisible()
       await page.getByRole('button', { name: `Start ${day}` }).tap()
       await exerciseCard(page, exercise).getByRole('button', { name: 'Complete set 1' }).tap()
       await finishWorkout(page)
       await page.getByRole('link', { name: 'Done' }).tap()
-      await expect(page.getByRole('button', { name: `${next}: view exercises` })).toContainText('Up next')
+      await expect(page.getByRole('region', { name: 'Up next' }).getByRole('heading', { name: next, exact: true })).toBeVisible()
     }
     await expect(page.getByRole('heading', { name: 'Recent workouts' })).toBeVisible()
     await shot(page, 'qa-today-history')
@@ -331,8 +321,8 @@ test.describe('plan editing', () => {
 
     // Delete the Legs day.
     await page.getByRole('group', { name: 'Days' }).getByRole('button', { name: 'Legs', exact: true }).tap()
-    page.once('dialog', (d) => d.accept())
     await page.getByRole('region', { name: 'Legs', exact: true }).getByRole('button', { name: 'Delete day' }).tap()
+    await confirmSheet(page, 'Delete day')
     await expect(page.getByRole('group', { name: 'Days' }).getByRole('button', { name: 'Legs', exact: true })).toHaveCount(0)
 
     // A second plan isn't active until you make it so; Today follows the active plan.
@@ -351,8 +341,8 @@ test.describe('plan editing', () => {
     // Deleting a plan keeps logged workouts.
     await nav(page, 'Plans')
     await page.getByRole('link', { name: /PPL v2/ }).tap()
-    page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'Delete plan' }).tap()
+    await confirmSheet(page, 'Delete plan')
     await expect(page.getByRole('heading', { level: 1, name: 'Plans' })).toBeVisible()
     await expect(page.getByRole('link', { name: /PPL v2/ })).toHaveCount(0)
   })

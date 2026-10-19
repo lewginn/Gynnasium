@@ -60,7 +60,7 @@ export default function SessionPage() {
       {prSets.length > 0 && (
         <section className="card pr-card">
           <h2>
-            <Trophy size={20} aria-hidden /> {prSets.length === 1 ? 'New PR' : `${prSets.length} new PRs`}
+            <Trophy size={14} aria-hidden className="pr-mark" /> {prSets.length === 1 ? 'New PR' : `${prSets.length} new PRs`}
           </h2>
           <ul className="plain-list">
             {prSets.map(({ exercise, set }) => (

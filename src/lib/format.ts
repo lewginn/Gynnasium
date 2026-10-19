@@ -14,7 +14,9 @@ export function formatRest(sec: number): string {
   return sec % 60 === 0 ? `${sec / 60} min` : formatClock(sec)
 }
 
+/** A workout's length: "<1 min", "52 min", "1h 05m". */
 export function formatDuration(ms: number): string {
+  if (ms < 60000) return '<1 min'
   const min = Math.round(ms / 60000)
   if (min < 60) return `${min} min`
   return `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m`

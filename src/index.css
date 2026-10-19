@@ -1,7 +1,7 @@
 /*
- * Styled after Apple's iOS design kit (HIG, iOS 26): system colours, the Dynamic Type ramp at the
- * default size, inset grouped lists, large titles, capsule controls and glass bars. Colour values
- * are the iOS semantic colours, so light and dark mode follow the phone's setting.
+ * Gynnasium lives on an iPhone (Safari, or added to the home screen), so it uses the platform's
+ * language: semantic colours that follow light/dark, the iOS text sizes, grouped lists, sheets.
+ * Everything below is built from the tokens in :root; don't hard-code colours, fonts or radii.
  */
 :root {
   /* Accent: systemGreen. In light mode a shade darker than Apple's accessible variant (#248a3d), which
@@ -30,20 +30,35 @@
   --pr: #ffcc00;
   --pr-soft: rgba(255, 204, 0, 0.16);
 
-  /* Liquid Glass, approximated: translucent, blurred, with a bright rim. */
+  /* Translucent material for floating bars, so content stays visible as it scrolls beneath. */
   --glass: rgba(255, 255, 255, 0.72);
   --glass-rim: rgba(255, 255, 255, 0.75);
   --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
 
-  --radius-group: 20px;
-  --radius-inner: 14px;
+  /* Fixed colours: text on the PR yellow, and physical things (a switch knob, a photo's white backdrop). */
+  --on-pr: #000000;
+  --knob: #ffffff;
+  --media-bg: #ffffff;
+  --orange: #ff9500;
+  --scrim: rgba(0, 0, 0, 0.35);
+  --shadow-raised: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.2);
+
+  --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  /* Numbers: SF Pro Rounded where the system has it (iPhone, Mac), else the text face. */
+  --font-numeric: ui-rounded, 'SF Pro Rounded', var(--font-text);
+
+  /* Three radii: controls; rows inside cards; cards and sheets. Capsules are only for buttons, chips and floating bars. */
+  --radius-s: 12px;
+  --radius-m: 16px;
+  --radius-l: 22px;
   --tap: 48px;
   --tab-h: 62px;
   --tab-gap: max(12px, env(safe-area-inset-bottom));
 
   color-scheme: light dark;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+  font-family: var(--font-text);
   font-size: 17px; /* Body */
   line-height: 22px;
   color: var(--label);
@@ -75,6 +90,7 @@
     --red-text: #ff6961;
     --orange-text: #ffb340;
     --pr: #ffd60a;
+    --orange: #ff9f0a;
     --pr-soft: rgba(255, 214, 10, 0.14);
 
     --glass: rgba(36, 36, 40, 0.68);
@@ -133,24 +149,18 @@ svg {
   outline-offset: 2px;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* Numbers are the content of a gym app: SF Pro Rounded on Apple devices (as in Apple Fitness),
-   with tabular figures so they don't jitter as they change. */
+/* Numbers in the rounded face, with tabular figures so they stay aligned as they change. */
 .stat-value,
 .rest-time,
 .stepper-value input,
 .volume-value,
 .set-label,
-.hero-number {
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+.hero-timer,
+.week-stats dd,
+.pr-value,
+.workout-header .muted,
+.workout-bar-meta {
+  font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
 }
 
@@ -170,10 +180,11 @@ svg {
 }
 .content-workout {
   padding-top: 0;
+  padding-inline: 12px; /* the set grid needs the width on a 390px iPhone */
   padding-bottom: calc(var(--tab-h) + var(--tab-gap) + 56px);
 }
 
-/* Large title, with room above it where the iOS nav bar would be. */
+/* Large title, with room above it for a back button. */
 .page-header {
   margin-bottom: 20px;
   padding: 36px 4px 0;
@@ -184,30 +195,23 @@ svg {
 .page-header > p {
   margin: 2px 0 0;
 }
-/* Back button: a glass capsule, as in iOS 26. */
+/* Back: tinted text with a chevron. */
 .back-link {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   min-height: 44px;
-  margin: -36px 0 8px -4px;
-  padding: 0 14px 0 8px;
+  margin: -36px 0 8px -10px;
+  padding: 0 10px 0 4px;
   border: 0;
-  border-radius: 999px;
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  box-shadow:
-    var(--glass-shadow),
-    inset 0 0 0 0.5px var(--glass-rim);
-  color: var(--label);
+  background: none;
+  color: var(--tint);
   font-size: 17px;
-  font-weight: 500;
   text-decoration: none;
   cursor: pointer;
 }
 .back-link:active {
-  transform: scale(0.96);
+  opacity: 0.5;
 }
 .title-row {
   display: flex;
@@ -237,14 +241,14 @@ svg {
   margin-bottom: 12px;
 }
 
-/* Section titles, like "Recent workouts" in Apple Fitness. */
+/* Section titles above lists. */
 .section-title {
   margin: 28px 4px 10px;
   font-size: 22px; /* Title 2 */
   line-height: 28px;
   font-weight: 700;
 }
-/* Grouped-list section header. */
+/* Labels: section headers, stat names, column heads. One style, 13px semibold, secondary colour. */
 .section-label {
   display: flex;
   align-items: center;
@@ -253,8 +257,7 @@ svg {
   padding: 0 16px;
   font-size: 13px;
   line-height: 18px;
-  font-weight: 400;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--label-2);
 }
 .card .section-label {
@@ -266,8 +269,6 @@ svg {
   font-size: 13px;
   line-height: 18px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.2px;
   color: var(--tint);
 }
 
@@ -275,7 +276,7 @@ svg {
   display: block;
   margin-bottom: 16px;
   padding: 16px;
-  border-radius: var(--radius-group);
+  border-radius: var(--radius-l);
   background: var(--cell);
   color: var(--label);
   text-decoration: none;
@@ -322,7 +323,7 @@ svg {
 
 /* ---------- Buttons & inputs */
 
-/* Capsule buttons, as in iOS 26. The default is the gray style: tinted text on a fill. */
+/* Buttons. Default: tinted text on a gray fill; primary: filled with the tint. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -363,6 +364,9 @@ svg {
   width: 100%;
   margin-bottom: 10px;
 }
+.btn-destructive {
+  color: var(--red-text);
+}
 .btn-danger-text {
   background: transparent;
   color: var(--red-text);
@@ -394,7 +398,7 @@ svg {
   min-height: 44px;
   padding: 0 14px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-s);
   background: var(--fill-3);
   color: var(--label);
   font: inherit;
@@ -421,7 +425,7 @@ select.input {
   font-weight: 600;
 }
 
-/* Search field: a capsule with a magnifying glass. */
+/* Search field with a magnifying glass. */
 .search-field {
   position: relative;
   margin-bottom: 10px;
@@ -435,7 +439,6 @@ select.input {
 }
 .search-field .input {
   padding-left: 42px;
-  border-radius: 999px;
 }
 .search-field .input::placeholder {
   color: var(--label-2);
@@ -447,7 +450,7 @@ select.input {
   margin-bottom: 16px;
 }
 
-/* Filter capsules */
+/* Filter chips */
 .chips {
   display: flex;
   gap: 8px;
@@ -503,7 +506,7 @@ select.input {
   margin-bottom: 12px;
 }
 
-/* Segmented control: a capsule track with a raised thumb on the selected segment. */
+/* Segmented control: the selected segment is raised. */
 .segmented {
   display: flex;
   margin-bottom: 8px;
@@ -512,7 +515,7 @@ select.input {
 }
 .segmented-wrap {
   flex-wrap: wrap;
-  border-radius: 22px;
+  border-radius: var(--radius-m);
 }
 .segmented button {
   position: relative;
@@ -541,12 +544,10 @@ select.input {
 }
 .segmented button[aria-checked='true']::before {
   background: var(--segment-thumb);
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.12),
-    0 3px 1px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-raised);
 }
 
-/* Settings-style row with an iOS switch. */
+/* A row with a switch. */
 .toggle {
   display: flex;
   align-items: center;
@@ -579,10 +580,8 @@ select.input {
   width: 27px;
   height: 27px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.15),
-    0 3px 1px rgba(0, 0, 0, 0.06);
+  background: var(--knob);
+  box-shadow: var(--shadow-raised);
   transition: transform 0.25s cubic-bezier(0.3, 0.7, 0.4, 1.15);
 }
 .toggle input[type='checkbox']:checked {
@@ -596,11 +595,11 @@ select.input {
 
 .stepper {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
   align-items: center;
   min-width: 0;
   height: 44px;
-  border-radius: 999px;
+  border-radius: var(--radius-s);
   background: var(--fill-3);
 }
 .stepper-btn {
@@ -608,7 +607,7 @@ select.input {
   place-items: center;
   height: 100%;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-s);
   background: transparent;
   color: var(--tint);
   cursor: pointer;
@@ -631,7 +630,7 @@ select.input {
   min-width: 0;
   height: 36px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-s);
   background: transparent;
   color: var(--label);
   font-size: 20px;
@@ -650,7 +649,7 @@ select.input {
   padding: 0;
   overflow: hidden;
   list-style: none;
-  border-radius: var(--radius-group);
+  border-radius: var(--radius-l);
   background: var(--cell);
 }
 /* Hairline separators, inset to line up with the text. */
@@ -716,11 +715,11 @@ select.input {
   color: var(--label);
 }
 
-/* Action list inside sheets: rows with a leading glyph, like an iOS context menu. */
+/* Action list inside sheets: rows with a leading icon. */
 .menu-list {
   display: grid;
   overflow: hidden;
-  border-radius: var(--radius-group);
+  border-radius: var(--radius-l);
   background: var(--cell);
 }
 .menu-item {
@@ -760,7 +759,7 @@ select.input {
   font-weight: 400;
 }
 
-/* ---------- Sheet: floats inset from the edges, as in iOS 26. */
+/* ---------- Sheet: inset from the screen edges, with a grabber. */
 
 .sheet-backdrop {
   position: fixed;
@@ -769,7 +768,7 @@ select.input {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--scrim);
   animation: fade-in 0.2s ease-out;
 }
 .sheet {
@@ -780,9 +779,9 @@ select.input {
   max-width: 624px;
   max-height: 85dvh;
   margin-bottom: max(8px, env(safe-area-inset-bottom));
-  border-radius: 32px;
+  border-radius: var(--radius-l);
   background: var(--bg);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-float);
   animation: slide-up 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 /* Grabber */
@@ -864,7 +863,7 @@ select.input {
   list-style: none;
 }
 .plan-exercise {
-  border-radius: var(--radius-inner);
+  border-radius: var(--radius-m);
   background: var(--bg);
 }
 .plan-exercise-summary {
@@ -917,7 +916,7 @@ select.input {
   margin-bottom: 6px;
   padding: 10px 14px;
   border: 0;
-  border-radius: var(--radius-inner);
+  border-radius: var(--radius-m);
   background: var(--tint-soft);
   text-align: left;
   cursor: pointer;
@@ -959,7 +958,7 @@ select.input {
   background: var(--label-3);
 }
 .volume-fill.low {
-  background: #ff9500;
+  background: var(--orange);
 }
 .volume-fill.good {
   background: var(--tint);
@@ -971,40 +970,33 @@ select.input {
 
 /* ---------- Today */
 
-.resume-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  box-shadow: inset 0 0 0 2px var(--tint);
-}
-.resume-card .muted {
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
+/* Other days: a grouped list, each day with a start button. */
 .day-list {
-  display: grid;
-  gap: 8px;
-  margin: 8px 0 0;
+  margin: 0 0 16px;
   padding: 0;
+  overflow: hidden;
   list-style: none;
+  border-radius: var(--radius-l);
+  background: var(--cell);
 }
 .day-row {
+  position: relative;
   display: flex;
   align-items: stretch;
-  overflow: hidden;
-  border-radius: var(--radius-inner);
-  background: var(--bg);
 }
-.day-row.next {
-  box-shadow: inset 0 0 0 2px var(--tint);
+.day-row + .day-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  border-top: 0.5px solid var(--separator);
 }
 .day-button {
   flex: 1;
   min-width: 0;
   min-height: 60px;
-  padding: 12px 14px;
+  padding: 11px 16px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -1038,7 +1030,7 @@ select.input {
 
 /* ---------- Workout */
 
-/* Nav bar with the iOS scroll edge effect: content blurs out beneath it. */
+/* Sticky header: content fades and blurs beneath it, so the title and Finish stay readable. */
 .workout-header {
   position: sticky;
   top: 0;
@@ -1047,8 +1039,8 @@ select.input {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 -16px 12px;
-  padding: calc(env(safe-area-inset-top) + 8px) 16px 12px;
+  margin: 0 -12px 12px;
+  padding: calc(env(safe-area-inset-top) + 8px) 12px 12px;
   background: linear-gradient(var(--bg) 60%, color-mix(in srgb, var(--bg) 70%, transparent));
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
@@ -1059,16 +1051,9 @@ select.input {
   line-height: 28px;
 }
 .workout-header .icon-btn {
-  margin-left: -6px;
-  background: var(--glass);
-  box-shadow:
-    var(--glass-shadow),
-    inset 0 0 0 0.5px var(--glass-rim);
-  color: var(--label);
+  margin-left: -10px;
 }
 .workout-header .muted {
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
 .workout-header .btn {
@@ -1076,7 +1061,7 @@ select.input {
 }
 
 .exercise-card {
-  padding: 16px 12px 6px;
+  padding: 16px 10px 6px;
 }
 .exercise-card h2 {
   margin-left: 4px;
@@ -1105,20 +1090,21 @@ select.input {
 }
 .with-rpe .set-grid-head,
 .with-rpe .set-row {
-  grid-template-columns: 28px minmax(0, 1.2fr) minmax(0, 1fr) 46px 44px;
+  grid-template-columns: 32px minmax(0, 1.2fr) minmax(0, 1fr) 40px 40px;
   gap: 4px;
 }
+.with-rpe .stepper-value input {
+  font-size: 18px;
+}
 .set-grid-head {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
   text-align: center;
   color: var(--label-2);
 }
 .set-row {
-  padding: 4px;
-  border-radius: var(--radius-inner);
+  padding: 2px;
+  border-radius: var(--radius-m);
   transition: background-color 0.2s;
 }
 /* The set you're on: lifted onto the page background, so your eye lands on it between sets. */
@@ -1155,18 +1141,11 @@ select.input {
 .set-row.done .set-label {
   color: var(--tint);
 }
-.set-row.done .set-label svg {
-  padding: 3px;
-  border-radius: 50%;
-  background: var(--pr);
-  color: #000000;
-  box-sizing: content-box;
-}
 .rpe-select {
   height: 44px;
   min-width: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-s);
   background: var(--fill-3);
   color: var(--label);
   font: inherit;
@@ -1208,11 +1187,10 @@ select.input {
   max-width: 480px;
   margin: 0 auto;
   padding: 12px 18px;
-  border-radius: 24px;
-  /* Same in light and dark: black on bright yellow reads well in both. */
+  border-radius: var(--radius-l);
   background: var(--pr);
-  color: #000000;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  color: var(--on-pr);
+  box-shadow: var(--shadow-float);
   animation: drop 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
 }
 @keyframes drop {
@@ -1221,7 +1199,7 @@ select.input {
   }
 }
 
-/* Rest timer: a floating glass pill, like an iOS Live Activity. */
+/* Rest timer: floats where the tab bar would be, within thumb reach. */
 .rest-bar {
   position: fixed;
   left: 16px;
@@ -1237,7 +1215,7 @@ select.input {
   margin: 0 auto;
   padding: 10px 10px 10px 22px;
   overflow: hidden;
-  border-radius: 36px;
+  border-radius: var(--radius-l);
   background: var(--glass);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
@@ -1260,11 +1238,9 @@ select.input {
 }
 .rest-label {
   overflow: hidden;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--label-2);
@@ -1293,7 +1269,7 @@ select.input {
   font-size: 15px;
 }
 .rest-over .btn {
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, var(--on-tint) 20%, transparent);
   color: inherit;
 }
 @keyframes rise {
@@ -1302,7 +1278,7 @@ select.input {
   }
 }
 
-/* A workout in progress, docked above the tab bar (iOS 26 tab bar accessory). */
+/* A workout in progress, docked above the tab bar so it's one tap away from any tab. */
 .workout-bar {
   position: fixed;
   left: 24px;
@@ -1344,7 +1320,6 @@ select.input {
 }
 .workout-bar-meta {
   display: block;
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
   font-size: 13px;
   line-height: 16px;
   font-weight: 600;
@@ -1357,6 +1332,20 @@ select.input {
 
 /* ---------- Stats & history */
 
+/* The one PR marker: a trophy on yellow, used wherever a PR is shown. */
+.pr-mark {
+  flex: none;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--pr);
+  color: var(--on-pr);
+  box-sizing: content-box;
+  vertical-align: middle;
+}
+.history-list .pr-mark {
+  margin-left: 6px;
+}
+
 .stat-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1368,7 +1357,7 @@ select.input {
   gap: 2px;
   min-width: 0;
   padding: 14px;
-  border-radius: var(--radius-group);
+  border-radius: var(--radius-l);
   background: var(--cell);
 }
 .stat-value {
@@ -1381,37 +1370,16 @@ select.input {
 }
 .stat-label {
   order: -1;
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
   color: var(--label-2);
 }
 
-.pr-card {
-  background: linear-gradient(160deg, var(--pr-soft), transparent 60%), var(--cell);
-}
 .pr-card h2 {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.pr-card h2 svg {
-  padding: 4px;
-  border-radius: 50%;
-  background: var(--pr);
-  color: #000000;
-  box-sizing: content-box;
-}
-.pr-icon {
-  margin-left: 6px;
-  padding: 2px;
-  border-radius: 50%;
-  background: var(--pr);
-  color: #000000;
-  vertical-align: -3px;
-  box-sizing: content-box;
 }
 
 .history-list {
@@ -1437,8 +1405,8 @@ select.input {
   width: 100%;
   height: auto;
   margin-bottom: 16px;
-  border-radius: var(--radius-group);
-  background: #ffffff;
+  border-radius: var(--radius-l);
+  background: var(--media-bg);
 }
 
 .details {
@@ -1455,7 +1423,7 @@ select.input {
   color: var(--label-2);
 }
 
-/* ---------- Tab bar: a floating glass capsule. */
+/* ---------- Tab bar: floating and translucent. */
 
 .bottom-nav {
   position: fixed;
@@ -1500,6 +1468,196 @@ select.input {
 .nav-item.active {
   background: var(--fill-3);
   color: var(--tint);
+}
+
+/* ---------- Today: a launchpad */
+
+.header-date {
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+
+/* Hero: the one thing to do next. */
+.hero {
+  display: grid;
+  gap: 4px;
+  padding: 18px 16px 16px;
+}
+.hero .btn-hero {
+  margin: 10px 0 0;
+}
+.hero-title {
+  margin: 0;
+  font-size: 28px; /* Title 1 */
+  line-height: 34px;
+  font-weight: 700;
+  letter-spacing: 0.36px;
+}
+.hero-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.hero-list li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 0;
+}
+.hero-list li + li::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-top: 0.5px solid var(--separator);
+}
+.hero-exercise {
+  min-width: 0;
+}
+.hero-exercise-name {
+  display: block;
+}
+.hero-more {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tint);
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+.btn-hero {
+  min-height: 56px;
+  font-size: 19px;
+}
+
+/* A workout in progress takes over the hero. */
+.hero-live {
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+.hero-timer {
+  font-size: 56px;
+  line-height: 62px;
+  font-weight: 700;
+}
+.hero-progress {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.hero-progress::before {
+  content: '';
+  grid-area: 1 / 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--fill-3);
+}
+.hero-progress-bar {
+  grid-area: 1 / 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--tint);
+  transition: width 0.3s;
+}
+
+/* This week */
+.week h2 {
+  margin-bottom: 14px;
+}
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+}
+.week-day {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.week-letter {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.week-day.today .week-letter {
+  color: var(--tint);
+}
+.week-dot {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--fill-3);
+}
+.week-day.today .week-dot {
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+.week-day.trained .week-dot {
+  background: var(--tint);
+  color: var(--on-tint);
+}
+.week-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--separator);
+}
+.week-stats > div {
+  min-width: 0;
+}
+.week-stats > div + div {
+  padding-left: 14px;
+  border-left: 0.5px solid var(--separator);
+}
+.week-stats dt {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+.week-stats dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.week-stats small {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--label-2);
+}
+
+/* Latest PR */
+.pr-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pr-row:active {
+  background: var(--cell-pressed);
+}
+.pr-value {
+  flex: none;
+  font-size: 17px;
+  font-weight: 700;
 }
 
 @media (prefers-reduced-motion: reduce) {

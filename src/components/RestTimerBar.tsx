@@ -19,7 +19,7 @@ export default function RestTimerBar() {
     return (
       <div className="rest-bar rest-over" role="status">
         <Timer size={22} aria-hidden />
-        <strong>Rest over, time for your next set</strong>
+        <strong>Rest over</strong>
         <button className="btn btn-sm" onClick={() => restTimer.dismiss()}>
           OK
         </button>

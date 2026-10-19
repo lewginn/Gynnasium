@@ -4,7 +4,7 @@ import type { LoggingType, SetLog, Settings } from './types'
 import { formatWeight } from './units'
 
 /** 45 → "45s", 90 → "90s", 150 → "2:30". Seconds read better for typical holds. */
-export function formatDuration(sec: number): string {
+export function formatSeconds(sec: number): string {
   return sec < 120 ? `${sec}s` : formatClock(sec)
 }
 
@@ -29,7 +29,7 @@ export function summariseSets(sets: SetLog[], settings: Pick<Settings, 'units'>,
   return groups
     .map(({ weight, values }) => {
       if (logging === 'time') {
-        const times = values.map(formatDuration).join(', ')
+        const times = values.map(formatSeconds).join(', ')
         return weight > 0 ? `${formatWeight(weight, settings.units)} × ${times}` : times
       }
       const reps = values.join(', ')
@@ -58,4 +58,15 @@ export function bestE1RM(sets: SetLog[]): number | null {
     if (e !== null && (best === null || e > best)) best = e
   }
   return best
+}
+
+/** The set to quote as "last time": heaviest, then most reps, then longest. */
+export function bestSet(sets: SetLog[]): SetLog | undefined {
+  const key = (s: SetLog) => [s.weightKg, s.reps, s.durationSec ?? 0]
+  return sets.reduce<SetLog | undefined>((best, s) => {
+    if (!best) return s
+    const [a, b] = [key(s), key(best)]
+    const i = a.findIndex((v, j) => v !== b[j])
+    return i >= 0 && a[i] > b[i] ? s : best
+  }, undefined)
 }
