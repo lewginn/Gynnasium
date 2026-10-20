@@ -11,6 +11,10 @@ export default defineConfig({
     baseURL: 'http://localhost:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // Sheets slide up. On a busy machine Playwright can judge a sliding button stable, aim at it mid-slide,
+    // and the click lands on whatever slides under that point (Cancel). Reduced motion (which the app
+    // supports) puts everything in place at once.
+    reducedMotion: 'reduce',
   },
   projects: [
     {
