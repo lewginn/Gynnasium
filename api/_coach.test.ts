@@ -130,6 +130,35 @@ describe('buildParams', () => {
     expect(p.messages[0].content).toBe('Build me a plan')
     expect(p.messages[2].content).toMatch(/^<context>\nMode: build\nUnits: kg\n<\/context>\n\nThree$/)
   })
+
+  // The API rejects a structured-output schema with more than 16 union-typed (nullable) fields or 24 optional ones
+  // with a 400, before Claude sees the request.
+  it.each(['build', 'edit', 'goal'] as const)('sends a %s schema within the API’s structured-output limits', (mode) => {
+    const schema = buildParams({ mode, context: '', turns: [{ role: 'user', content: 'Hi' }] }, '').output_config?.format?.schema
+    let unions = 0
+    let optional = 0
+    const walk = (node: unknown) => {
+      if (!node || typeof node !== 'object') return
+      const { properties, required } = node as { properties?: Record<string, { anyOf?: unknown; type?: unknown }>; required?: string[] }
+      for (const [key, prop] of Object.entries(properties ?? {})) {
+        if (prop.anyOf || Array.isArray(prop.type)) unions++
+        if (!required?.includes(key)) optional++
+      }
+      Object.values(node).forEach(walk)
+    }
+    walk(schema)
+    expect(unions).toBeLessThanOrEqual(16)
+    expect(optional).toBeLessThanOrEqual(24)
+  })
+})
+
+describe('mode replies', () => {
+  it('fills in the other modes’ fields with null', async () => {
+    const goalReply = { message: 'Which days can you train?', goalPlan: null }
+    const { d } = deps({ callClaude: async () => message({ content: [{ type: 'text', text: JSON.stringify(goalReply), citations: null }] }) })
+    const res = await handleCoach(post('good', { ...body, mode: 'goal' }), d)
+    expect(await res.json()).toEqual({ ...goalReply, newPlan: null, changes: null })
+  })
 })
 
 describe('catalogueText', () => {

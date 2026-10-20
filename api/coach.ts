@@ -5,7 +5,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { BetaMessage, BetaMessageStreamParams } from '@anthropic-ai/sdk/resources/beta/messages/messages'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { COACH_REPLY_SCHEMA, type CoachReply, type CoachRequest } from '../src/lib/coachSchema.js'
+import { coachReplySchema, type CoachReply, type CoachRequest } from '../src/lib/coachSchema.js'
 import { POPULAR_EXERCISE_IDS } from '../src/lib/popular.js'
 
 export const MODEL = 'claude-opus-5-5'
@@ -48,10 +48,10 @@ const INSTRUCTIONS = `You are the coach inside Gynnasium, a gym-tracking app. Yo
 
 You never change anything yourself: you propose, the app shows the person a preview, and they decide whether to apply it.
 
-Three modes, given in the context:
+Three modes, given in the context. Each reply has the message and only that mode's field:
 - build: help them make a new plan. When you know enough to write a good one (goal, days per week, equipment, experience; time per session and injuries if relevant), put the whole plan in newPlan. If something essential is missing, ask one short question and leave newPlan null. Don't interrogate: assume sensibly and say what you assumed.
 - edit: the context shows their current plan, with refs for days (d1, d2…) and exercises (x1, x2…). Put edits in changes, using those refs. Make only the edits they asked for, plus anything those edits require.
-- goal: they're training towards a date (a holiday, an event). Put a plan in goalPlan: phases back to back from today to the goal date, each with its own plan, plus daily nutrition targets. Leave newPlan and changes null.
+- goal: they're training towards a date (a holiday, an event). Put a plan in goalPlan: phases back to back from today to the goal date, each with its own plan, plus daily nutrition targets.
 
 Planning to a goal:
 - Before proposing, you need the days of the week they can train (and how long per session, and equipment, if not already clear). For nutrition you need sex, age, height and activity outside the gym; bodyweight is in the context. Ask for anything missing in one short message, with goalPlan null.
@@ -84,7 +84,7 @@ Alternating weeks: when someone wants week A and week B to differ, give every da
 Writing the message:
 - Short and plain, like a good coach talking between sets. No markdown, headings or exclamation marks. Don't repeat the changes one by one: the app lists them.
 - Use the person's units for any weight you mention.
-- If they ask about something other than their training, answer briefly with newPlan and changes null.
+- If they ask about something other than their training, answer briefly with that field null.
 - You're not a doctor. For pain or injury, suggest seeing a professional and avoid loading the area.
 
 Exercise catalogue: id | equipment | primary muscles | logging (w = weight × reps, b = bodyweight reps, t = timed). * = common staple.`
@@ -97,7 +97,7 @@ export function buildParams(req: CoachRequest, catalogue: string): BetaMessageSt
     betas: ['server-side-fallback-2026-07-01'],
     // If Claude Opus declines, Anthropic retries on its recommended fallback model.
     fallbacks: 'default',
-    output_config: { effort: 'medium', format: { type: 'json_schema', schema: COACH_REPLY_SCHEMA } },
+    output_config: { effort: 'medium', format: { type: 'json_schema', schema: coachReplySchema(req.mode) } },
     // Instructions and catalogue never change between requests, so they're cached.
     system: [{ type: 'text', text: `${INSTRUCTIONS}\n\n${catalogue}`, cache_control: { type: 'ephemeral' } }],
     messages: req.turns.map((t, i) => ({
@@ -177,7 +177,9 @@ export async function handleCoach(request: Request, deps: CoachDeps): Promise<Re
   if (message.stop_reason === 'max_tokens') return fail(502, 'Claude’s answer was cut off. Try asking for less at once.')
   const text = message.content.find((b) => b.type === 'text')?.text
   try {
-    return json(200, JSON.parse(text ?? '') as CoachReply)
+    // The reply only has its mode's field (see coachReplySchema); the app expects all three.
+    const reply: CoachReply = { newPlan: null, changes: null, goalPlan: null, ...(JSON.parse(text ?? '') as Pick<CoachReply, 'message'>) }
+    return json(200, reply)
   } catch {
     return fail(502, 'Claude’s answer didn’t come through properly. Try again.')
   }
