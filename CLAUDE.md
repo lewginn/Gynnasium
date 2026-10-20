@@ -28,6 +28,9 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - When adding or changing a synced table, update `src/lib/types.ts`, `src/db/db.ts` (new Dexie version), and add a new file under `supabase/migrations/` with RLS enabled.
 - Domain logic lives in `src/lib/` as pure functions with Vitest tests next to them.
 
+## Progression (src/lib/progression.ts)
+- Workouts pre-fill from `suggestNext()`: the plan exercise's range and rule (double progression by default, linear, or off) against the last two workouts of that exercise. The card shows its one-line `note`. Never suggest less than last time except the deliberate ~10% drop after two misses.
+
 ## Sync (src/sync/)
 - Local-first: the app only ever reads/writes Dexie. `syncOnce` pulls then pushes in the background (on start, every minute while open, when back online, after finishing or editing a workout). Never await sync in UI flows.
 - Push = rows with `updatedAt` ≥ the last push; pull = rows with `server_updated_at` > the last pull (server clock). Last write wins by `updatedAt`; the server trigger ignores writes older than the stored row.

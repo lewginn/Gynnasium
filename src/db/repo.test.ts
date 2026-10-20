@@ -99,12 +99,27 @@ describe('workouts', () => {
     expect(await startSession()).toBe(sessionId)
   })
 
-  it('pre-fills sets from last time', async () => {
-    await logWorkout('Barbell_Squat', [[100, 5], [100, 5], [105, 3]])
+  it('pre-fills sets from last time, aiming a rep higher (within the 6–10 default range)', async () => {
+    await logWorkout('Barbell_Squat', [[100, 5], [100, 7], [105, 3]])
     const sessionId = await startSession()
     await addSessionExercise(sessionId, await exercise('Barbell_Squat'))
     const sets = (await loadSession(sessionId))!.exercises[0].sets
-    expect(sets.map((s) => [s.weightKg, s.reps])).toEqual([[100, 5], [100, 5], [105, 3]])
+    expect(sets.map((s) => [s.weightKg, s.reps])).toEqual([[100, 6], [100, 8], [105, 6]])
+  })
+
+  it('progresses a plan exercise: more weight once every set hits the top of its range', async () => {
+    const planId = await createPlan('P')
+    const dayId = await addPlanDay(planId, 'Legs')
+    const peId = await addPlanExercise(dayId, await exercise('Barbell_Squat'))
+    await db.planExercises.update(peId, { targetSets: 2, repMin: 5, repMax: 8 })
+    const s1 = await startSession(dayId)
+    for (const set of (await loadSession(s1))!.exercises[0].sets) {
+      await updateSet(set.id, { weightKg: 100, reps: 8 })
+      await completeSet(set.id)
+    }
+    await finishSession(s1)
+    const s2 = await startSession(dayId)
+    expect((await loadSession(s2))!.exercises[0].sets.map((s) => [s.weightKg, s.reps])).toEqual([[105, 5], [105, 5]])
   })
 
   it('detects PRs against earlier workouts only', async () => {

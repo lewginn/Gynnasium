@@ -1,6 +1,7 @@
 import type { ResolvedChange, TrainingSummary } from '../lib/coach'
 import type { ProposedPlan } from '../lib/coachSchema'
 import { estimate1RM } from '../lib/e1rm'
+import { suggestNext, type Progression } from '../lib/progression'
 import { toDateKey, weeklyCounts, type Point } from '../lib/metrics'
 import { detectPRs } from '../lib/prs'
 import { inferFocusMuscles } from '../lib/suggest'
@@ -15,10 +16,13 @@ import type {
   PlanDay,
   PlanExercise,
   SessionExercise,
+  Settings,
+  Units,
   SetLog,
   Synced,
   WorkoutSession,
 } from '../lib/types'
+import { DEFAULT_SETTINGS } from '../lib/types'
 import { db } from './db'
 
 const uuid = () => crypto.randomUUID()
@@ -104,7 +108,7 @@ export async function addPlanExercise(planDayId: string, exercise: Exercise): Pr
 
 export async function updatePlanExercise(
   id: string,
-  patch: Partial<Pick<PlanExercise, 'targetSets' | 'repMin' | 'repMax' | 'restSec' | 'exerciseId'>>,
+  patch: Partial<Pick<PlanExercise, 'targetSets' | 'repMin' | 'repMax' | 'restSec' | 'exerciseId' | 'progressionRule'>>,
 ) {
   await db.planExercises.update(id, { ...patch, updatedAt: now() })
 }
@@ -205,36 +209,73 @@ export async function lastPerformance(exerciseId: string, excludeSessionId?: str
   return []
 }
 
-/** Planned (not yet completed) set rows, pre-filled from last time so logging is usually one tap. */
-async function planSets(
-  sessionExerciseId: string,
-  exercise: Pick<Exercise, 'id' | 'logging'>,
-  count: number,
-  /** Reps, or seconds for timed exercises, when there's no history to copy. */
-  target: number,
-  sessionId: string,
-): Promise<SetLog[]> {
-  const last = await lastPerformance(exercise.id, sessionId)
-  const timed = exercise.logging === 'time'
-  return Array.from({ length: count }, (_, i) => {
-    const ref = last[Math.min(i, last.length - 1)]
-    return {
-      id: uuid(),
-      sessionExerciseId,
-      exerciseId: exercise.id,
-      setNumber: i + 1,
-      setType: 'working' as const,
-      weightKg: ref?.weightKg ?? 0,
-      reps: timed ? 0 : (ref?.reps ?? target),
-      ...(timed ? { durationSec: ref?.durationSec ?? target } : {}),
-      updatedAt: now(),
-    }
-  })
+/** Working sets from the last `count` workouts of an exercise, newest first (for progression). */
+export async function recentPerformances(exerciseId: string, count: number, excludeSessionId?: string): Promise<SetLog[][]> {
+  const sets = await db.setLogs
+    .where('[exerciseId+completedAt]')
+    .between([exerciseId, 0], [exerciseId, Infinity])
+    .reverse()
+    .filter((s) => alive(s) && s.setType !== 'warmup')
+    .toArray()
+  const out: SetLog[][] = []
+  const seen = new Set<string>()
+  for (const s of sets) {
+    if (seen.has(s.sessionExerciseId)) continue
+    seen.add(s.sessionExerciseId)
+    const se = await db.sessionExercises.get(s.sessionExerciseId)
+    if (!alive(se) || se.sessionId === excludeSessionId || !alive(await db.sessions.get(se.sessionId))) continue
+    out.push(sets.filter((x) => x.sessionExerciseId === se.id).sort((a, b) => a.setNumber - b.setNumber))
+    if (out.length === count) break
+  }
+  return out
 }
 
-/** What to pre-fill when there's no history: the top of the rep range, or the bottom of a time range. */
-const planTarget = (exercise: Exercise, pe: Pick<PlanExercise, 'repMin' | 'repMax'>) =>
-  exercise.logging === 'time' ? pe.repMin : pe.repMax
+async function currentUnits(): Promise<Units> {
+  return ((await db.kv.get('settings'))?.value as Partial<Settings> | undefined)?.units ?? DEFAULT_SETTINGS.units
+}
+
+type SetTarget = { sets: number; repMin: number; repMax: number }
+
+/** The plan's target for an exercise in this workout, or sensible defaults for one added on the day. */
+async function targetFor(exercise: Exercise, sessionId: string): Promise<{ target: SetTarget; rule: PlanExercise['progressionRule'] }> {
+  const session = await db.sessions.get(sessionId)
+  const pe = session?.planDayId
+    ? (await db.planExercises.where('planDayId').equals(session.planDayId).filter(alive).toArray()).find((p) => p.exerciseId === exercise.id)
+    : undefined
+  if (pe) return { target: { sets: pe.targetSets, repMin: pe.repMin, repMax: pe.repMax }, rule: pe.progressionRule }
+  const [repMin, repMax] = defaultRepRange(exercise)
+  return { target: { sets: 3, repMin, repMax }, rule: 'double_progression' }
+}
+
+/** What to aim for on an exercise in this workout, and why (progressive overload). */
+export async function progressionFor(exercise: Exercise, sessionId: string, given?: { target: SetTarget; rule: PlanExercise['progressionRule'] }): Promise<Progression> {
+  const { target, rule } = given ?? (await targetFor(exercise, sessionId))
+  const history = await recentPerformances(exercise.id, 2, sessionId)
+  return suggestNext({ history, target, exercise, rule, units: await currentUnits() })
+}
+
+/** Planned (not yet completed) set rows, pre-filled with the progression target so logging is usually one tap. */
+async function planSets(
+  sessionExerciseId: string,
+  exercise: Exercise,
+  count: number,
+  sessionId: string,
+  given?: { target: SetTarget; rule: PlanExercise['progressionRule'] },
+): Promise<SetLog[]> {
+  const { sets } = await progressionFor(exercise, sessionId, given && { ...given, target: { ...given.target, sets: count } })
+  const planned = sets.length === count ? sets : Array.from({ length: count }, (_, i) => sets[Math.min(i, sets.length - 1)])
+  return planned.map((p, i) => ({
+    id: uuid(),
+    sessionExerciseId,
+    exerciseId: exercise.id,
+    setNumber: i + 1,
+    setType: 'working' as const,
+    weightKg: p.weightKg,
+    reps: p.reps,
+    ...(p.durationSec !== undefined ? { durationSec: p.durationSec } : {}),
+    updatedAt: now(),
+  }))
+}
 
 export async function startSession(planDayId?: string): Promise<string> {
   const existing = await getActiveSession()
@@ -252,7 +293,8 @@ export async function startSession(planDayId?: string): Promise<string> {
     if (!exercise) continue
     const se: SessionExercise = { id: uuid(), sessionId, exerciseId: pe.exerciseId, order, updatedAt: now() }
     sessionExercises.push(se)
-    sets.push(...(await planSets(se.id, exercise, pe.targetSets, planTarget(exercise, pe), sessionId)))
+    const given = { target: { sets: pe.targetSets, repMin: pe.repMin, repMax: pe.repMax }, rule: pe.progressionRule }
+    sets.push(...(await planSets(se.id, exercise, pe.targetSets, sessionId, given)))
   }
 
   await db.transaction('rw', db.sessions, db.sessionExercises, db.setLogs, async () => {
@@ -267,8 +309,7 @@ export async function addSessionExercise(sessionId: string, exercise: Exercise):
   const id = uuid()
   const ex = await withLogging(exercise)
   const order = await db.sessionExercises.where('sessionId').equals(sessionId).filter(alive).count()
-  const [repMin, repMax] = defaultRepRange(ex)
-  const sets = await planSets(id, ex, 3, planTarget(ex, { repMin, repMax }), sessionId)
+  const sets = await planSets(id, ex, 3, sessionId)
   await db.transaction('rw', db.sessionExercises, db.setLogs, async () => {
     await db.sessionExercises.add({ id, sessionId, exerciseId: exercise.id, order, updatedAt: now() })
     await db.setLogs.bulkAdd(sets)
@@ -286,8 +327,7 @@ export async function swapSessionExercise(sessionExerciseId: string, newExercise
   )
   const pending = sets.filter((s) => !s.completedAt)
   const done = sets.filter((s) => s.completedAt)
-  const [repMin, repMax] = defaultRepRange(ex)
-  const refill = await planSets(se.id, ex, pending.length, planTarget(ex, { repMin, repMax }), se.sessionId)
+  const refill = await planSets(se.id, ex, pending.length, se.sessionId)
   await db.transaction('rw', db.sessionExercises, db.setLogs, async () => {
     await db.sessionExercises.update(se.id, {
       exerciseId: newExercise.id,

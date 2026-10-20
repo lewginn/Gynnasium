@@ -1082,6 +1082,23 @@ select.input {
 .last-time {
   margin: 0 4px 10px;
 }
+/* Progressive overload: why today's sets are pre-filled as they are. */
+.progression-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -6px 4px 10px;
+  color: var(--tint);
+  font-weight: 600;
+}
+.progression-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+.progression-deload,
+.progression-top {
+  color: var(--label-2);
+}
 .hint {
   margin: -2px 4px 8px;
 }
