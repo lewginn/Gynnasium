@@ -18,8 +18,9 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - **Components:** lists are `.list` / `.list-row` with `.section-label` headers; cards are `.card`; buttons `.btn` (tint on gray) and `.btn-primary`. PRs are always `.pr-mark` (trophy on yellow). Icons are lucide only.
 - **Asking before something irreversible:** `useConfirm()` (`src/state/confirm.ts`), which opens a sheet. Never `window.confirm`. The action button says what it does ("Delete plan"), never "OK"; don't ask twice for the same thing.
 - **Copy:** plain and short. No exclamation marks, no reassurance ("Nothing is lost"), no roadmap ("coming next"), no invented numbers (estimates the app can't back up). One name per thing across screens.
-- **Layout:** test at 390px wide (iPhone 15): the workout set grid is the tightest screen, including with RPE on. Today is a launchpad, in order: the hero (`.hero`: the workout in progress, else the up-next plan day with one big Start), This week (`lib/week.ts`), the latest PR while fresh, other days, recent workouts. On an iPhone the hero's Start button is visible without scrolling, with This week starting just below. Don't make Today's sections appear one by one: render once loaded, so buttons don't move under a thumb.
+- **Layout:** test at 390px wide (iPhone 15): the workout set grid is the tightest screen, including with RPE on. Today is a launchpad, in order: the hero (`.hero`: the workout in progress, else the up-next plan day with one big Start), This week (`lib/week.ts`), the goal card when there's a goal, the latest PR while fresh, other days, recent workouts. On an iPhone the hero's Start button is visible without scrolling, with This week starting just below. Don't make Today's sections appear one by one: render once loaded, so buttons don't move under a thumb.
 - In a workout, the next set of the exercise you're on gets `.set-row.current`.
+- Alternating weeks: a plan day may have `week` 1 (A) or 2 (B). Rotation order is `sortDays` (`src/lib/weeks.ts`): week A, then B. It follows the last day done, not the calendar. Show days with `dayLabel` wherever two weeks could have a day of the same name.
 
 ## Conventions
 - IDs are `crypto.randomUUID()` generated on the device; library exercises use their free-exercise-db string id.
@@ -27,6 +28,9 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - Don't index booleans in Dexie (IndexedDB can't); filter instead.
 - When adding or changing a synced table, update `src/lib/types.ts`, `src/db/db.ts` (new Dexie version), and add a new file under `supabase/migrations/` with RLS enabled.
 - Domain logic lives in `src/lib/` as pure functions with Vitest tests next to them.
+
+## Progression (src/lib/progression.ts)
+- Workouts pre-fill from `suggestNext()`: the plan exercise's range and rule (double progression by default, linear, or off) against the last two workouts of that exercise. The card shows its one-line `note`. Never suggest less than last time except the deliberate ~10% drop after two misses.
 
 ## Sync (src/sync/)
 - Local-first: the app only ever reads/writes Dexie. `syncOnce` pulls then pushes in the background (on start, every minute while open, when back online, after finishing or editing a workout). Never await sync in UI flows.
@@ -40,6 +44,13 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - `api/coach.ts` is a Vercel function (Node ESM): checks the Supabase login and `COACH_ALLOWED_EMAILS`, then calls Claude with structured output (`src/lib/coachSchema.ts`). It's compiled as plain Node, so its relative imports end in `.js`, and anything it imports from `src/` may only have type imports. Tests for it go in `api/_*.test.ts` (an underscore keeps Vercel from deploying a file as an endpoint).
 - The app sends the chat plus a text context (plan with refs d1/x1, recent training, units). Claude replies with a message and either `newPlan` or `changes`; `src/lib/coach.ts` checks them against the library and the plan, and the page previews them. Nothing is written until Apply (`applyPlanChanges` / `createPlanFromProposal`).
 - Instructions and the exercise catalogue form one cached system block: keep anything that varies per request out of it.
+
+## Goals and calendar (src/lib/schedule.ts, src/lib/goals.ts, src/pages/CalendarPage.tsx, src/pages/GoalPage.tsx)
+- Dates are local `YYYY-MM-DD` strings; weekdays are 0 = Monday … 6 = Sunday. Use the helpers in `lib/schedule.ts`, not `Date` maths in components.
+- A plan day can sit on fixed weekdays (`PlanDay.weekdays`). A plan with none keeps the up-next rotation; with some, `dayPlan()` / `nextWorkout()` decide Today's hero. Days off (`daysOff` table) skip scheduled workouts.
+- One active goal (`Goal.isActive`) with a target date, targets (bodyweight uses the 7-day average, measurements the latest, lifts est. 1RM) and optional daily calories and protein.
+- A goal's phases are plans with `goalId`, `startsOn` and `endsOn`. A phase covering a date wins over the active plan; `syncActivePhase()` makes it the active plan on Today. Re-planning soft-deletes the old phases.
+- The coach's goal mode (`/goal/coach`) returns `goalPlan`; `checkGoalPlan()` clamps phases to today…target date, removes overlaps, and drops implausible food targets. Applied only on Apply, like any proposal.
 
 ## Charts (src/components/charts/)
 - Plain SVG, no chart library. 2px lines, ringed end-dot labelled with the latest value, 1px recessive grid, crosshair + tooltip on touch/hover/arrow keys, legend only for 2+ series, a "Show as table" view.

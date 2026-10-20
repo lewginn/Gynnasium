@@ -515,6 +515,13 @@ select.input {
 .day-tabs {
   margin-bottom: 12px;
 }
+.day-tabs-label {
+  margin: 4px 0 2px;
+  padding: 0 4px;
+}
+.day-week {
+  margin-bottom: 12px;
+}
 
 /* Segmented control: the selected segment is raised. */
 .segmented {
@@ -1081,6 +1088,23 @@ select.input {
 }
 .last-time {
   margin: 0 4px 10px;
+}
+/* Progressive overload: why today's sets are pre-filled as they are. */
+.progression-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -6px 4px 10px;
+  color: var(--tint);
+  font-weight: 600;
+}
+.progression-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+.progression-deload,
+.progression-top {
+  color: var(--label-2);
 }
 .hint {
   margin: -2px 4px 8px;
@@ -2053,6 +2077,179 @@ select.input {
   flex: none;
   width: 50px;
   padding: 0;
+}
+
+/* ---------- Calendar and goals */
+
+.schedule-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.schedule-row {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  color: var(--label-2);
+}
+.schedule-row .input {
+  min-height: 44px;
+}
+.goal-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.goal-flag {
+  flex: none;
+  color: var(--tint);
+}
+.calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -6px -6px 8px;
+}
+.calendar-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.calendar-grid {
+  display: grid;
+  gap: 4px;
+}
+.calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.calendar-weekdays span {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--label-2);
+}
+.calendar-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 2px 4px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--fill-3);
+  color: var(--label);
+  cursor: pointer;
+}
+.calendar-day.outside {
+  background: transparent;
+  color: var(--label-3);
+}
+.calendar-day.today {
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+.calendar-day.off {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--separator);
+}
+.calendar-num {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.calendar-tag {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--tint);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.calendar-day.off .calendar-tag {
+  color: var(--label-2);
+}
+.calendar-goal {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  color: var(--tint);
+}
+.week-calendar {
+  margin: -10px -12px -10px 0;
+}
+.goal-card {
+  display: grid;
+  gap: 2px;
+}
+.goal-card .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.goal-card-title {
+  font-size: 20px;
+  line-height: 25px;
+  font-weight: 700;
+}
+.proposal-phase {
+  margin-bottom: 12px;
+}
+.proposal-phase h3 {
+  margin: 0;
+}
+.proposal-phase .plain-list {
+  gap: 8px;
+  margin-top: 6px;
+}
+.goal-targets {
+  display: grid;
+  gap: 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.goal-targets li {
+  display: grid;
+  gap: 4px;
+}
+.goal-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tint);
+}
+.goal-bar {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--fill-3);
+}
+.goal-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--tint);
+}
+.goal-description {
+  min-height: 70px;
+  padding-top: 10px;
+  resize: vertical;
+}
+.goal-add {
+  margin: 4px 0 0;
 }
 
 /* ---------- Garmin export */

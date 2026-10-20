@@ -1,7 +1,10 @@
-import type { PlanChange, ProposedPlan } from './coachSchema'
+import type { PlanChange, ProposedGoalPlan, ProposedNutrition, ProposedPlan } from './coachSchema'
+import { formatAmount, type TargetProgress } from './goals'
+import { WEEKDAY_NAMES, addDays, daysBetween, weekdayOf } from './schedule'
 import { formatRest } from './format'
-import type { Exercise, LoggingType, Plan, PlanDay, PlanExercise, Units } from './types'
+import type { Exercise, Goal, LoggingType, Plan, PlanDay, PlanExercise, Units } from './types'
 import { formatWeight } from './units'
+import { weekLetter } from './weeks'
 
 // The coach sees the plan as text with short refs (d1, x1) and answers with changes against those refs.
 // Everything Claude sends back is checked here before the user sees it: unknown exercises and refs are dropped,
@@ -37,7 +40,8 @@ export function planText(detail: CoachPlan): string {
   if (detail.days.length === 0) lines.push('(no days yet)')
   let x = 0
   detail.days.forEach(({ day, exercises }, i) => {
-    lines.push(`d${i + 1} ${day.name}${day.focusMuscles.length ? ` (focus: ${day.focusMuscles.join(', ')})` : ''}`)
+    const week = day.week ? ` [week ${weekLetter(day.week)}]` : ''
+    lines.push(`d${i + 1} ${day.name}${week}${day.focusMuscles.length ? ` (focus: ${day.focusMuscles.join(', ')})` : ''}`)
     if (exercises.length === 0) lines.push('  (no exercises)')
     for (const { pe, exercise } of exercises)
       lines.push(`  x${++x} ${exercise.id}: ${target(pe.targetSets, pe.repMin, pe.repMax, exercise.logging)}, rest ${pe.restSec} s`)
@@ -79,6 +83,15 @@ export function trainingText(t: TrainingSummary, units: Units): string {
 
 // ---------------------------------------------------------------- Checking what Claude proposes
 
+/** Distinct weekdays 0–6, sorted; null when there are none. */
+export const asWeekdays = (w: unknown): number[] | null => {
+  const days = Array.isArray(w) ? [...new Set(w.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))].sort() : []
+  return days.length ? days : null
+}
+
+/** Claude's week, or null for anything that isn't week A (1) or B (2). */
+const asWeek = (w: unknown): 1 | 2 | null => (w === 1 || w === 2 ? w : null)
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(n)))
 
 /** Keeps sets, reps and rest within what the app can show and log. */
@@ -103,6 +116,8 @@ export function checkNewPlan(proposed: ProposedPlan, library: Map<string, Exerci
     .map((d) => ({
       name: d.name.trim() || 'Day',
       focusMuscles: d.focusMuscles,
+      week: asWeek(d.week),
+      weekdays: asWeekdays(d.weekdays),
       exercises: d.exercises.flatMap((e) => {
         const ex = library.get(e.exerciseId)
         if (!ex) {
@@ -125,7 +140,8 @@ export type ResolvedChange = { reason: string } & (
   | { op: 'replace_exercise'; planExerciseId: string; exercise: Exercise; target: Partial<Target> }
   | { op: 'update_exercise'; planExerciseId: string; target: Partial<Target> }
   | { op: 'move_exercise'; planExerciseId: string; position: number }
-  | { op: 'add_day'; name: string; exercises: { exercise: Exercise; target: Target }[] }
+  | { op: 'add_day'; name: string; exercises: { exercise: Exercise; target: Target }[]; week: 1 | 2 | null }
+  | { op: 'set_day_week'; dayId: string; week: 1 | 2 | null }
   | { op: 'remove_day'; dayId: string }
   | { op: 'rename_day'; dayId: string; name: string }
   | { op: 'rename_plan'; name: string }
@@ -205,7 +221,7 @@ export function checkChanges(changes: PlanChange[], detail: CoachPlan, library: 
           if (!found) skipped.push(`add day: ${e.exerciseId} isn't in the exercise library`)
           return found ? [{ exercise: found, target: sanitiseTarget(e, found.logging) }] : []
         })
-        out.push({ op: c.op, reason, name: name || 'New day', exercises })
+        out.push({ op: c.op, reason, name: name || 'New day', exercises, week: asWeek(c.week) })
         break
       }
       case 'remove_day':
@@ -216,6 +232,10 @@ export function checkChanges(changes: PlanChange[], detail: CoachPlan, library: 
         if (!dayId) skip(c, `no day ${c.day}`)
         else if (!name) skip(c, 'no name')
         else out.push({ op: c.op, reason, dayId, name })
+        break
+      case 'set_day_week':
+        if (!dayId) skip(c, `no day ${c.day}`)
+        else out.push({ op: c.op, reason, dayId, week: asWeek(c.week) })
         break
       case 'rename_plan':
         if (!name) skip(c, 'no name')
@@ -278,8 +298,10 @@ export function describeChange(c: ResolvedChange, detail: CoachPlan): ChangeLine
       const r = row(c.planExerciseId)
       return { kind: 'move', title: r?.exercise.name ?? 'Exercise', detail: why(`Move to position ${c.position} in ${r?.dayName ?? 'its day'}`) }
     }
+    case 'set_day_week':
+      return { kind: 'move', title: dayName(c.dayId), detail: why(c.week ? `Move to week ${weekLetter(c.week)}` : 'Every week') }
     case 'add_day':
-      return { kind: 'add', title: `New day: ${c.name}`, detail: why(c.exercises.map((e) => e.exercise.name).join(', ') || 'No exercises yet') }
+      return { kind: 'add', title: `New day: ${c.name}${c.week ? ` (week ${weekLetter(c.week)})` : ''}`, detail: why(c.exercises.map((e) => e.exercise.name).join(', ') || 'No exercises yet') }
     case 'remove_day':
       return { kind: 'remove', title: `Day: ${dayName(c.dayId)}`, detail: why('Remove the day and its exercises') }
     case 'rename_day':
@@ -287,4 +309,89 @@ export function describeChange(c: ResolvedChange, detail: CoachPlan): ChangeLine
     case 'rename_plan':
       return { kind: 'edit', title: `${detail.plan.name} → ${c.name}`, detail: why('Rename plan') }
   }
+}
+
+// ---------------------------------------------------------------- Planning to a goal
+
+/** The goal, how each target stands, days off and any phases already planned, as context for the coach. */
+export function goalText(
+  goal: Goal,
+  progress: TargetProgress[],
+  phases: Pick<Plan, 'name' | 'startsOn' | 'endsOn'>[],
+  daysOff: string[],
+  today: string,
+  units: Units,
+): string {
+  const days = daysBetween(today, goal.targetDate)
+  const lines = [
+    `Today: ${today} (${WEEKDAY_NAMES[weekdayOf(today)]})`,
+    `Goal: "${goal.name}" on ${goal.targetDate}: ${days} days (${Math.floor(days / 7)} weeks) away.`,
+  ]
+  if (goal.description) lines.push(`What it's for: ${goal.description}`)
+  if (progress.length) {
+    lines.push('Targets:')
+    for (const p of progress) {
+      const fmt = (v: number | null) => (v === null ? 'not logged' : formatAmount(v, p.unit, units))
+      lines.push(`  ${p.label}: now ${fmt(p.current)}, target ${fmt(p.target)}${p.start !== null ? `, started at ${fmt(p.start)}` : ''}`)
+    }
+  } else lines.push('Targets: none set (plan from the description).')
+  lines.push(goal.calories ? `Current nutrition targets: ${goal.calories} kcal, ${goal.proteinG ?? '?'} g protein a day.` : 'No nutrition targets yet.')
+  const off = daysOff.filter((d) => d >= today && d <= goal.targetDate)
+  if (off.length) lines.push(`Days off (no training): ${off.join(', ')}`)
+  if (phases.length) lines.push(`Current phases: ${phases.map((p) => `${p.name} ${p.startsOn}–${p.endsOn}`).join('; ')}`)
+  return lines.join('\n')
+}
+
+export interface CheckedPhase {
+  name: string
+  startsOn: string
+  endsOn: string
+  focus: string
+  plan: ProposedPlan
+}
+
+export interface CheckedGoalPlan {
+  phases: CheckedPhase[]
+  nutrition: ProposedNutrition | null
+  skipped: string[]
+}
+
+const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s))
+
+/**
+ * Phases kept inside today…goal date, in order and without overlaps (a phase that starts before the
+ * previous one ends is moved to start the day after); each plan checked like a new plan.
+ */
+export function checkGoalPlan(
+  proposed: ProposedGoalPlan,
+  goal: Pick<Goal, 'targetDate'>,
+  library: Map<string, Exercise>,
+  today: string,
+): CheckedGoalPlan {
+  const skipped: string[] = []
+  const phases: CheckedPhase[] = []
+  const sorted = [...proposed.phases].filter((p) => isDate(p.startsOn) && isDate(p.endsOn)).sort((a, b) => a.startsOn.localeCompare(b.startsOn))
+  if (sorted.length < proposed.phases.length) skipped.push('a phase with dates that don’t make sense')
+  for (const p of sorted) {
+    const prevEnd = phases.at(-1)?.endsOn
+    const startsOn = [p.startsOn, today, prevEnd ? addDays(prevEnd, 1) : today].sort().at(-1)!
+    const endsOn = p.endsOn > goal.targetDate ? goal.targetDate : p.endsOn
+    if (endsOn < startsOn) {
+      skipped.push(`${p.name}: outside the time to the goal`)
+      continue
+    }
+    const checked = checkNewPlan(p.plan, library)
+    skipped.push(...checked.skipped)
+    if (checked.plan.days.length === 0) {
+      skipped.push(`${p.name}: no usable exercises`)
+      continue
+    }
+    const name = p.name.trim() || 'Phase'
+    // The phase's plan is named after the phase: the goal page and Today show it as "Phase: Build".
+    phases.push({ name, startsOn, endsOn, focus: p.focus.trim(), plan: { ...checked.plan, name, goal: p.focus.trim() || checked.plan.goal } })
+  }
+  const n = proposed.nutrition
+  const nutrition = n && n.calories >= 1000 && n.calories <= 6000 && n.proteinG >= 30 && n.proteinG <= 400 ? { ...n, note: n.note.trim() } : null
+  if (n && !nutrition) skipped.push('nutrition targets outside a sensible range')
+  return { phases, nutrition, skipped }
 }

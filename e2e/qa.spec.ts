@@ -352,6 +352,7 @@ test.describe('plan editing', () => {
 test.describe('accessibility and ergonomics', () => {
   for (const colorScheme of ['light', 'dark'] as const)
     test(`no serious accessibility problems on the main screens (${colorScheme})`, async ({ page }) => {
+      test.setTimeout(60_000) // scans every main screen
       await page.emulateMedia({ colorScheme })
       await axeMainScreens(page)
     })
@@ -386,7 +387,7 @@ async function axeMainScreens(page: Page) {
         message: 'Dumbbells hit the same muscles.',
         newPlan: null,
         changes: [
-          { op: 'replace_exercise', day: null, exercise: 'x1', exerciseId: 'Dumbbell_Bench_Press', name: null, sets: null, repMin: null, repMax: null, restSec: null, position: null, exercises: null, reason: 'Bench taken' },
+          { op: 'replace_exercise', day: null, exercise: 'x1', exerciseId: 'Dumbbell_Bench_Press', name: null, sets: null, repMin: null, repMax: null, restSec: null, position: null, exercises: null, week: null, reason: 'Bench taken' },
         ],
       },
     }),
@@ -409,7 +410,8 @@ async function axeMainScreens(page: Page) {
 function tooSmall(page: Page) {
   return page.evaluate(() =>
       Array.from(document.querySelectorAll("button, a, input, select"))
-        .map((el) => ({ el, r: el.getBoundingClientRect() }))
+        // A control inside a label (a switch row) is hit anywhere on the label.
+        .map((el) => ({ el, r: (el.closest('label') ?? el).getBoundingClientRect() }))
         .filter(({ r }) => r.width > 0 && r.height > 0)
         .filter(({ r }) => r.height < 36 || r.width < 32)
         .map(({ el, r }) => `${el.tagName} "${el.getAttribute('aria-label') ?? el.textContent?.trim()}" ${Math.round(r.width)}×${Math.round(r.height)}`),
