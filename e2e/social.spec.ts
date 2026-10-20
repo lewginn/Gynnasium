@@ -119,12 +119,13 @@ test('profile: name and photo from the header, what friends see, and Settings', 
   await shot(page, 'p4-profile-edit')
   await sheet.getByRole('button', { name: 'Save' }).tap()
   await expect(page.getByRole('region', { name: 'You' })).toContainText('Lewis')
-  expect(state.saves[0]).toMatchObject({ display_name: 'Lewis', avatar: expect.stringMatching(/^data:image\/jpeg;base64,/) })
+  // Saves are optimistic (the page updates first), so wait for the request rather than assume it has landed.
+  await expect.poll(() => state.saves[0]).toMatchObject({ display_name: 'Lewis', avatar: expect.stringMatching(/^data:image\/jpeg;base64,/) })
 
   // What friends see is saved to the server.
   await page.getByRole('checkbox', { name: /Your PRs/ }).uncheck()
   await expect(page.getByRole('checkbox', { name: /Your PRs/ })).not.toBeChecked()
-  expect(state.saves.at(-1)).toMatchObject({ share_prs: false })
+  await expect.poll(() => state.saves.at(-1)).toMatchObject({ share_prs: false })
   await expect(page.getByRole('region', { name: 'Account & backup' })).toContainText('Signed in as lewis@example.com')
   await shot(page, 'p4-profile')
 
