@@ -2400,3 +2400,9 @@ select.input {
   font-weight: 600;
   text-align: right;
 }
+
+/* ---------- Garmin export */
+
+.export-help {
+  margin: 0 4px 16px;
+}
