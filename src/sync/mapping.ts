@@ -4,8 +4,13 @@ export type Row = Record<string, unknown>
 
 /** Synced tables in dependency order: parents before children, so foreign keys hold when pushing. */
 export const SYNCED_TABLES = [
-  { local: 'plans', remote: 'plans', columns: ['id', 'name', 'goal', 'is_active', 'created_by'] },
-  { local: 'planDays', remote: 'plan_days', columns: ['id', 'plan_id', 'name', 'order', 'focus_muscles', 'week'] },
+  {
+    local: 'goals',
+    remote: 'goals',
+    columns: ['id', 'name', 'description', 'starts_on', 'target_date', 'targets', 'calories', 'protein_g', 'nutrition_note', 'is_active'],
+  },
+  { local: 'plans', remote: 'plans', columns: ['id', 'name', 'goal', 'is_active', 'created_by', 'goal_id', 'starts_on', 'ends_on'] },
+  { local: 'planDays', remote: 'plan_days', columns: ['id', 'plan_id', 'name', 'order', 'focus_muscles', 'week', 'weekdays'] },
   {
     local: 'planExercises',
     remote: 'plan_exercises',
@@ -48,12 +53,13 @@ export const SYNCED_TABLES = [
     ],
   },
   { local: 'bodyMetrics', remote: 'body_metrics', columns: ['id', 'type', 'value', 'date', 'source'] },
+  { local: 'daysOff', remote: 'days_off', columns: ['id', 'date', 'note'] },
 ] as const
 
 export type SyncedTable = (typeof SYNCED_TABLES)[number]
 
-/** Columns that are text[] with a non-null default: send [] rather than null. */
-const ARRAY_COLUMNS = new Set(['focus_muscles', 'alternates', 'prs'])
+/** Array (or JSON array) columns with a non-null default: send [] rather than null. */
+const ARRAY_COLUMNS = new Set(['focus_muscles', 'alternates', 'prs', 'weekdays', 'targets'])
 /** Columns every synced table has. Server-only columns (user_id, server_updated_at) are never sent. */
 const COMMON = ['updated_at', 'deleted_at']
 
