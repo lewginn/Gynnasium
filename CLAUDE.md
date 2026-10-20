@@ -56,6 +56,13 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - Plain SVG, no chart library. 2px lines, ringed end-dot labelled with the latest value, 1px recessive grid, crosshair + tooltip on touch/hover/arrow keys, legend only for 2+ series, a "Show as table" view.
 - Colours are `--chart-primary` / `--chart-muted` / `--chart-grid`, validated for colour-blind separation and contrast in both themes. `--chart-muted` is de-emphasis only (always with a legend).
 
+## iOS app (capacitor.config.ts, ios/, src/native/)
+- Capacitor wraps the same Vite build in a WKWebView; there is one codebase. Only `src/native/` imports Capacitor, and everything else asks `isNative` or calls its helpers, which do nothing on the web. Import plugins on demand there, so the web bundle never loads them.
+- The app's page is `capacitor://localhost`, so anything that needs the website (the coach API, links in emails) uses `webOrigin()`, which reads `VITE_WEB_URL` in the app. `api/coach.ts` allows that origin (CORS).
+- No service worker in the app: it carries its own build.
+- Native extras: haptics (`tapFeedback` / `restOverAlert`), keep-awake during a workout (`useWakeLock`), and a "Rest over" local notification scheduled with the rest timer. iOS shows that notification only when the app is in the background or locked; in the foreground the app's own beep does the job.
+- Cloud sessions are Linux: the iOS project can be edited here but only built on the owner's Mac. Keep `ios/` edits small and say in the PR what to check in Xcode. Don't hand-edit `ios/App/CapApp-SPM/Package.swift`; `npx cap sync ios` writes it when plugins change.
+
 ## Checks before pushing
 ```sh
 npm run lint && npm run typecheck && npm test

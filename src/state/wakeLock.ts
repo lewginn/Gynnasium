@@ -1,9 +1,17 @@
 import { useEffect } from 'react'
+import { isNative, keepAwake } from '../native'
 
 /** Keeps the screen on while `active` (e.g. during a workout). Re-acquired when the tab becomes visible again. */
 export function useWakeLock(active: boolean) {
   useEffect(() => {
-    if (!active || !('wakeLock' in navigator)) return
+    if (!active || !isNative) return
+    // The iOS app turns off auto-lock directly.
+    void keepAwake(true).catch(() => {})
+    return () => void keepAwake(false).catch(() => {})
+  }, [active])
+
+  useEffect(() => {
+    if (!active || isNative || !('wakeLock' in navigator)) return
     let lock: WakeLockSentinel | null = null
     let cancelled = false
     const acquire = async () => {

@@ -5,10 +5,12 @@ import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import ConfirmProvider from './components/ConfirmProvider'
 import { ensureExerciseLibrary } from './db/db'
+import { isNative } from './native'
 import { startSync } from './sync'
 import './index.css'
 
-registerSW({ immediate: true })
+// The iOS app carries its own copy of the build, so it has no use for the offline service worker.
+if (!isNative) registerSW({ immediate: true })
 void ensureExerciseLibrary()
 void startSync()
 

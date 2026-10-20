@@ -1,4 +1,5 @@
 import type { CoachError, CoachReply, CoachRequest } from '../lib/coachSchema'
+import { webOrigin } from '../native'
 import { accessToken } from '../sync'
 
 /** Thrown with a message that can be shown as is. */
@@ -11,7 +12,7 @@ export async function askCoach(request: CoachRequest, signal?: AbortSignal): Pro
   if (!token) throw new CoachFailure('Your login needs refreshing: connect to the internet, or sign out and back in.')
   let res: Response
   try {
-    res = await fetch('/api/coach', {
+    res = await fetch(`${webOrigin()}/api/coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(request),

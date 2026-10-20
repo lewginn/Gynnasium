@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { webOrigin } from '../native'
 
 // Account & sync controller. Signing in is required: everything on the phone belongs to the signed-in account.
 // The Supabase library is loaded lazily so it never slows down opening the app.
@@ -164,7 +165,7 @@ export async function sendLoginLink(email: string): Promise<string | null> {
   if (!navigator.onLine) return offline
   const { supabase } = await load()
   if (!supabase) return 'Sign-in isn’t set up on this version of the app.'
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } })
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: webOrigin() } })
   return error ? authMessage(error.message) : null
 }
 
@@ -191,7 +192,7 @@ export async function createAccount(email: string, password: string): Promise<{ 
   if (!navigator.onLine) return { error: offline, confirm: false }
   const { supabase } = await load()
   if (!supabase) return { error: 'Sign-in isn’t set up on this version of the app.', confirm: false }
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: webOrigin() } })
   if (error) return { error: authMessage(error.message), confirm: false }
   // An existing, confirmed email comes back with no identities (Supabase doesn't reveal that the account exists).
   if (data.user && data.user.identities?.length === 0) return { error: authMessage('already registered'), confirm: false }

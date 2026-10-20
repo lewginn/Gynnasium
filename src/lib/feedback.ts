@@ -1,4 +1,6 @@
 // Sound, vibration and screen wake lock for the gym floor. All best-effort: unsupported browsers just skip them.
+// Safari has no vibration, so on iPhone only the app (native haptics) buzzes.
+import { isNative, nativeRestOver, nativeTap } from '../native'
 
 let audio: AudioContext | null = null
 
@@ -14,7 +16,8 @@ export function unlockAudio() {
 
 /** Three short beeps, loud enough to hear over gym music with the phone on a bench. */
 export function restOverAlert() {
-  navigator.vibrate?.([300, 150, 300, 150, 300])
+  if (isNative) nativeRestOver()
+  else navigator.vibrate?.([300, 150, 300, 150, 300])
   if (!audio) return
   const t0 = audio.currentTime
   for (let i = 0; i < 3; i++) {
@@ -32,5 +35,6 @@ export function restOverAlert() {
 }
 
 export function tapFeedback() {
-  navigator.vibrate?.(15)
+  if (isNative) nativeTap()
+  else navigator.vibrate?.(15)
 }

@@ -12,7 +12,7 @@ It's a web app you can install to your home screen, and it works offline.
 | 1.5 | Bodyweight & timed exercises, reorder mid-workout, edit past workouts | ✅ |
 | 2 | Login (email link), sync & backup, body metrics, progress charts | ✅ |
 | 3 | AI plan builder and chat (Claude) | ✅ |
-| 4 | Progressive overload, Garmin FIT export, native app wrapper | Next |
+| 4 | Progressive overload, Garmin FIT export, native app wrapper (iOS app started) | Next |
 | 5 | Goals to a date, weekly schedule, calendar and days off, phased plans and food targets from the coach | ✅ |
 
 ## Development
@@ -36,6 +36,19 @@ Copy `.env.example` to `.env.local` and fill in the Supabase anon key. The app r
 
 `npm run dev` doesn't serve `/api`; use a Vercel preview to try the coach for real. The e2e tests mock it.
 
+### iOS app
+
+`ios/` is a [Capacitor](https://capacitorjs.com) project: the same web build, bundled into a native app, plus native haptics, keep-awake during a workout, and a "Rest over" notification when the phone is locked. The bridge lives in `src/native/`; the web app ignores it.
+
+On a Mac with Xcode:
+
+1. In `.env.local`, set the Supabase values and `VITE_WEB_URL` (your production Vercel URL; the coach and login emails go there).
+2. `npm install`, then `npm run ios`. This builds, copies the build into `ios/`, and opens Xcode.
+3. In Xcode, select the App target → Signing & Capabilities → choose your Team. If the bundle id `com.lewginn.gynnasium` is taken, change it there and in `capacitor.config.ts`.
+4. Pick your iPhone and press Run. The first time, the iPhone asks you to trust the developer (Settings → General → VPN & Device Management).
+
+The app carries its own copy of the web build, so after changing code run `npm run build:ios` (or `npm run ios`) and Run again. For TestFlight: Product → Archive → Distribute App, and raise the build number (General → Identity) each upload.
+
 ### Database
 
 `supabase/migrations/` holds the schema. Apply a migration by pasting it into the Supabase dashboard's SQL editor, or with the Supabase CLI (`supabase db push`).
@@ -53,4 +66,4 @@ Bump `LIBRARY_VERSION` in `src/db/db.ts` afterwards so installed apps reload it.
 
 ## Stack
 
-React + TypeScript + Vite, an installable web app via `vite-plugin-pwa`, IndexedDB via Dexie (local-first), Supabase (Postgres + auth) for sync, hosted on Vercel.
+React + TypeScript + Vite, an installable web app via `vite-plugin-pwa`, IndexedDB via Dexie (local-first), Supabase (Postgres + auth) for sync, hosted on Vercel. The iOS app wraps the same build with Capacitor.

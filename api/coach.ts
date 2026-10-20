@@ -188,6 +188,24 @@ const liveDeps = (): CoachDeps => ({
   callClaude: (params) => new Anthropic().beta.messages.stream(params).finalMessage(),
 })
 
-export function POST(request: Request): Promise<Response> {
-  return handleCoach(request, liveDeps())
+// The iOS app's page comes from capacitor://localhost, so its WebView asks (OPTIONS) before posting here.
+// The login is a bearer token, not a cookie, so allowing the app's origin lets nothing else in.
+const APP_ORIGINS = ['capacitor://localhost']
+
+export function withCors(request: Request, response: Response): Response {
+  const origin = request.headers.get('origin')
+  if (origin && APP_ORIGINS.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin)
+    response.headers.set('Vary', 'Origin')
+  }
+  return response
+}
+
+export function OPTIONS(request: Request): Response {
+  const headers = { 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '86400' }
+  return withCors(request, new Response(null, { status: 204, headers }))
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return withCors(request, await handleCoach(request, liveDeps()))
 }

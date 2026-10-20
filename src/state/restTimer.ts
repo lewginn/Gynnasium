@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { restOverAlert } from '../lib/feedback'
+import { isNative, scheduleRestOver } from '../native'
 
 export interface RestTimerState {
   /** Epoch ms when rest ends. Stored as an end time (not a countdown) so it stays right if the tab sleeps or reloads. */
@@ -29,6 +30,8 @@ const listeners = new Set<() => void>()
 let ticker: ReturnType<typeof setInterval> | null = null
 
 function set(next: RestTimerState) {
+  // In the iOS app, a notification covers the end of rest while the app is in the background or the phone is locked.
+  if (isNative && next.endAt !== state.endAt) void scheduleRestOver(next.endAt, next.label)
   state = next
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
