@@ -20,6 +20,7 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - **Copy:** plain and short. No exclamation marks, no reassurance ("Nothing is lost"), no roadmap ("coming next"), no invented numbers (estimates the app can't back up). One name per thing across screens.
 - **Layout:** test at 390px wide (iPhone 15): the workout set grid is the tightest screen, including with RPE on. Today is a launchpad, in order: the hero (`.hero`: the workout in progress, else the up-next plan day with one big Start), This week (`lib/week.ts`), the latest PR while fresh, other days, recent workouts. On an iPhone the hero's Start button is visible without scrolling, with This week starting just below. Don't make Today's sections appear one by one: render once loaded, so buttons don't move under a thumb.
 - In a workout, the next set of the exercise you're on gets `.set-row.current`.
+- Alternating weeks: a plan day may have `week` 1 (A) or 2 (B). Rotation order is `sortDays` (`src/lib/weeks.ts`): week A, then B. It follows the last day done, not the calendar. Show days with `dayLabel` wherever two weeks could have a day of the same name.
 
 ## Conventions
 - IDs are `crypto.randomUUID()` generated on the device; library exercises use their free-exercise-db string id.

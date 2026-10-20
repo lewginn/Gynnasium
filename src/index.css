@@ -515,6 +515,13 @@ select.input {
 .day-tabs {
   margin-bottom: 12px;
 }
+.day-tabs-label {
+  margin: 4px 0 2px;
+  padding: 0 4px;
+}
+.day-week {
+  margin-bottom: 12px;
+}
 
 /* Segmented control: the selected segment is raised. */
 .segmented {

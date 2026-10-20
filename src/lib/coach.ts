@@ -2,6 +2,7 @@ import type { PlanChange, ProposedPlan } from './coachSchema'
 import { formatRest } from './format'
 import type { Exercise, LoggingType, Plan, PlanDay, PlanExercise, Units } from './types'
 import { formatWeight } from './units'
+import { weekLetter } from './weeks'
 
 // The coach sees the plan as text with short refs (d1, x1) and answers with changes against those refs.
 // Everything Claude sends back is checked here before the user sees it: unknown exercises and refs are dropped,
@@ -37,7 +38,8 @@ export function planText(detail: CoachPlan): string {
   if (detail.days.length === 0) lines.push('(no days yet)')
   let x = 0
   detail.days.forEach(({ day, exercises }, i) => {
-    lines.push(`d${i + 1} ${day.name}${day.focusMuscles.length ? ` (focus: ${day.focusMuscles.join(', ')})` : ''}`)
+    const week = day.week ? ` [week ${weekLetter(day.week)}]` : ''
+    lines.push(`d${i + 1} ${day.name}${week}${day.focusMuscles.length ? ` (focus: ${day.focusMuscles.join(', ')})` : ''}`)
     if (exercises.length === 0) lines.push('  (no exercises)')
     for (const { pe, exercise } of exercises)
       lines.push(`  x${++x} ${exercise.id}: ${target(pe.targetSets, pe.repMin, pe.repMax, exercise.logging)}, rest ${pe.restSec} s`)
@@ -79,6 +81,9 @@ export function trainingText(t: TrainingSummary, units: Units): string {
 
 // ---------------------------------------------------------------- Checking what Claude proposes
 
+/** Claude's week, or null for anything that isn't week A (1) or B (2). */
+const asWeek = (w: unknown): 1 | 2 | null => (w === 1 || w === 2 ? w : null)
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(n)))
 
 /** Keeps sets, reps and rest within what the app can show and log. */
@@ -103,6 +108,7 @@ export function checkNewPlan(proposed: ProposedPlan, library: Map<string, Exerci
     .map((d) => ({
       name: d.name.trim() || 'Day',
       focusMuscles: d.focusMuscles,
+      week: asWeek(d.week),
       exercises: d.exercises.flatMap((e) => {
         const ex = library.get(e.exerciseId)
         if (!ex) {
@@ -125,7 +131,8 @@ export type ResolvedChange = { reason: string } & (
   | { op: 'replace_exercise'; planExerciseId: string; exercise: Exercise; target: Partial<Target> }
   | { op: 'update_exercise'; planExerciseId: string; target: Partial<Target> }
   | { op: 'move_exercise'; planExerciseId: string; position: number }
-  | { op: 'add_day'; name: string; exercises: { exercise: Exercise; target: Target }[] }
+  | { op: 'add_day'; name: string; exercises: { exercise: Exercise; target: Target }[]; week: 1 | 2 | null }
+  | { op: 'set_day_week'; dayId: string; week: 1 | 2 | null }
   | { op: 'remove_day'; dayId: string }
   | { op: 'rename_day'; dayId: string; name: string }
   | { op: 'rename_plan'; name: string }
@@ -205,7 +212,7 @@ export function checkChanges(changes: PlanChange[], detail: CoachPlan, library: 
           if (!found) skipped.push(`add day: ${e.exerciseId} isn't in the exercise library`)
           return found ? [{ exercise: found, target: sanitiseTarget(e, found.logging) }] : []
         })
-        out.push({ op: c.op, reason, name: name || 'New day', exercises })
+        out.push({ op: c.op, reason, name: name || 'New day', exercises, week: asWeek(c.week) })
         break
       }
       case 'remove_day':
@@ -216,6 +223,10 @@ export function checkChanges(changes: PlanChange[], detail: CoachPlan, library: 
         if (!dayId) skip(c, `no day ${c.day}`)
         else if (!name) skip(c, 'no name')
         else out.push({ op: c.op, reason, dayId, name })
+        break
+      case 'set_day_week':
+        if (!dayId) skip(c, `no day ${c.day}`)
+        else out.push({ op: c.op, reason, dayId, week: asWeek(c.week) })
         break
       case 'rename_plan':
         if (!name) skip(c, 'no name')
@@ -278,8 +289,10 @@ export function describeChange(c: ResolvedChange, detail: CoachPlan): ChangeLine
       const r = row(c.planExerciseId)
       return { kind: 'move', title: r?.exercise.name ?? 'Exercise', detail: why(`Move to position ${c.position} in ${r?.dayName ?? 'its day'}`) }
     }
+    case 'set_day_week':
+      return { kind: 'move', title: dayName(c.dayId), detail: why(c.week ? `Move to week ${weekLetter(c.week)}` : 'Every week') }
     case 'add_day':
-      return { kind: 'add', title: `New day: ${c.name}`, detail: why(c.exercises.map((e) => e.exercise.name).join(', ') || 'No exercises yet') }
+      return { kind: 'add', title: `New day: ${c.name}${c.week ? ` (week ${weekLetter(c.week)})` : ''}`, detail: why(c.exercises.map((e) => e.exercise.name).join(', ') || 'No exercises yet') }
     case 'remove_day':
       return { kind: 'remove', title: `Day: ${dayName(c.dayId)}`, detail: why('Remove the day and its exercises') }
     case 'rename_day':
