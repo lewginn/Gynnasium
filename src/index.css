@@ -2095,12 +2095,44 @@ select.input {
 .composer {
   border-top: 1px solid var(--border);
 }
-.composer-input {
+/* The box: a textarea that grows with the text, and the character count under it. */
+.composer-field {
   flex: 1;
-  min-height: 50px;
-  padding: 12px 14px;
-  resize: none;
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--fill-3);
+}
+.composer-field:focus-within {
+  outline: 2px solid var(--tint);
+  outline-offset: -2px;
+}
+.composer-input {
+  width: 100%;
+  min-height: 78px; /* three lines */
+  max-height: 166px; /* seven lines, then it scrolls */
+  padding: 12px 14px 0;
+  border: 0;
+  background: none;
+  color: var(--label);
+  font: inherit;
+  font-size: 17px; /* ≥16px stops mobile browsers zooming on focus */
   line-height: 22px;
+  resize: none;
+  outline: none;
+}
+.composer-count {
+  justify-self: end;
+  padding: 2px 12px 6px;
+  color: var(--label-2);
+  font-family: var(--font-numeric);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+.composer-count.full {
+  color: var(--red-text);
 }
 .composer-send {
   flex: none;

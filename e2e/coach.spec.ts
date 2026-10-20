@@ -163,6 +163,23 @@ test('the coach says what went wrong and keeps your message', async ({ page, con
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
+test('the message box grows with the text and counts characters up to the limit', async ({ page }) => {
+  await page.goto('/coach')
+  const input = page.getByLabel('Message Claude')
+  await expect(page.getByText('0 / 4,000')).toBeVisible()
+  const empty = (await input.boundingBox())!.height
+
+  const text = 'I can train Monday, Wednesday and Friday.\nAbout an hour each time.\nFull gym.\nI want to lose 5 kg by June.'
+  await input.fill(text)
+  await expect(page.getByText(`${text.length} / 4,000`)).toBeVisible()
+  expect((await input.boundingBox())!.height).toBeGreaterThan(empty)
+  await shot(page, 'p3-coach-composer')
+
+  await input.fill('x'.repeat(4100))
+  await expect(input).toHaveValue('x'.repeat(4000))
+  await expect(page.getByText('4,000 / 4,000')).toBeVisible()
+})
+
 test('“Not now” leaves the plan as it was', async ({ page }) => {
   await mockCoach(page, [{ message: 'Swap it?', newPlan: null, changes: [change({ op: 'remove_exercise', exercise: 'x1' })] }])
   await waitForLibrary(page)

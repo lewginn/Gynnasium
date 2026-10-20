@@ -168,69 +168,82 @@ const planSchema = {
       },
     }
 
-/** JSON schema for structured output: every reply has this shape. */
-export const COACH_REPLY_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['message', 'newPlan', 'changes', 'goalPlan'],
-  properties: {
-    message: { type: 'string', description: 'What you say to the user. Plain text, short.' },
-    newPlan: nullable(planSchema),
-    changes: nullable({
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['op', 'day', 'exercise', 'exerciseId', 'name', 'sets', 'repMin', 'repMax', 'restSec', 'position', 'exercises', 'week', 'reason'],
-        properties: {
-          op: { type: 'string', enum: [...CHANGE_OPS] },
-          day: nullable({ type: 'string', description: 'Day ref, e.g. "d1".' }),
-          exercise: nullable({ type: 'string', description: 'Plan exercise ref, e.g. "x3".' }),
-          exerciseId: nullable({ type: 'string', description: 'Catalogue id of the exercise to add or swap in.' }),
-          name: nullable({ type: 'string', description: 'New name, for add_day, rename_day and rename_plan.' }),
-          sets: nullable({ type: 'integer' }),
-          repMin: nullable({ type: 'integer' }),
-          repMax: nullable({ type: 'integer' }),
-          restSec: nullable({ type: 'integer' }),
-          position: nullable({ type: 'integer', description: '1-based position within the day, for add_exercise and move_exercise.' }),
-          exercises: nullable({ type: 'array', items: exerciseSchema, description: 'The exercises of a new day, for add_day.' }),
-          week: nullable({ type: 'integer', enum: [1, 2], description: 'For add_day and set_day_week: 1 = week A, 2 = week B; null = every week.' }),
-          reason: { type: 'string', description: 'Why, in a few words, shown next to the change.' },
-        },
-      },
-    }),
-    goalPlan: nullable({
+/** Each mode's proposal field. A mode's reply only has its own, so the server fills the others in with null. */
+const PROPOSAL_SCHEMAS = {
+  newPlan: nullable(planSchema),
+  changes: nullable({
+    type: 'array',
+    items: {
       type: 'object',
       additionalProperties: false,
-      required: ['phases', 'nutrition'],
+      required: ['op', 'day', 'exercise', 'exerciseId', 'name', 'sets', 'repMin', 'repMax', 'restSec', 'position', 'exercises', 'week', 'reason'],
       properties: {
-        phases: {
-          type: 'array',
-          description: 'Back to back, from today to the goal date, in order.',
-          items: {
-            type: 'object',
-            additionalProperties: false,
-            required: ['name', 'startsOn', 'endsOn', 'focus', 'plan'],
-            properties: {
-              name: { type: 'string', description: 'Short, e.g. "Build", "Lean out", "Taper".' },
-              startsOn: { type: 'string', format: 'date' },
-              endsOn: { type: 'string', format: 'date', description: 'Inclusive.' },
-              focus: { type: 'string', description: 'One line: what this phase is for.' },
-              plan: planSchema,
-            },
-          },
-        },
-        nutrition: nullable({
+        op: { type: 'string', enum: [...CHANGE_OPS] },
+        day: nullable({ type: 'string', description: 'Day ref, e.g. "d1".' }),
+        exercise: nullable({ type: 'string', description: 'Plan exercise ref, e.g. "x3".' }),
+        exerciseId: nullable({ type: 'string', description: 'Catalogue id of the exercise to add or swap in.' }),
+        name: nullable({ type: 'string', description: 'New name, for add_day, rename_day and rename_plan.' }),
+        sets: nullable({ type: 'integer' }),
+        repMin: nullable({ type: 'integer' }),
+        repMax: nullable({ type: 'integer' }),
+        restSec: nullable({ type: 'integer' }),
+        position: nullable({ type: 'integer', description: '1-based position within the day, for add_exercise and move_exercise.' }),
+        exercises: nullable({ type: 'array', items: exerciseSchema, description: 'The exercises of a new day, for add_day.' }),
+        week: nullable({ type: 'integer', enum: [1, 2], description: 'For add_day and set_day_week: 1 = week A, 2 = week B; null = every week.' }),
+        reason: { type: 'string', description: 'Why, in a few words, shown next to the change.' },
+      },
+    },
+  }),
+  goalPlan: nullable({
+    type: 'object',
+    additionalProperties: false,
+    required: ['phases', 'nutrition'],
+    properties: {
+      phases: {
+        type: 'array',
+        description: 'Back to back, from today to the goal date, in order.',
+        items: {
           type: 'object',
           additionalProperties: false,
-          required: ['calories', 'proteinG', 'note'],
+          required: ['name', 'startsOn', 'endsOn', 'focus', 'plan'],
           properties: {
-            calories: { type: 'integer', description: 'Daily calories.' },
-            proteinG: { type: 'integer', description: 'Daily protein in grams.' },
-            note: { type: 'string', description: 'One or two plain sentences on how to use the targets.' },
+            name: { type: 'string', description: 'Short, e.g. "Build", "Lean out", "Taper".' },
+            startsOn: { type: 'string', format: 'date' },
+            endsOn: { type: 'string', format: 'date', description: 'Inclusive.' },
+            focus: { type: 'string', description: 'One line: what this phase is for.' },
+            plan: planSchema,
           },
-        }),
+        },
       },
-    }),
-  },
-} as const
+      nutrition: nullable({
+        type: 'object',
+        additionalProperties: false,
+        required: ['calories', 'proteinG', 'note'],
+        properties: {
+          calories: { type: 'integer', description: 'Daily calories.' },
+          proteinG: { type: 'integer', description: 'Daily protein in grams.' },
+          note: { type: 'string', description: 'One or two plain sentences on how to use the targets.' },
+        },
+      }),
+    },
+  }),
+}
+
+const PROPOSAL_FIELD = { build: 'newPlan', edit: 'changes', goal: 'goalPlan' } as const
+
+/**
+ * JSON schema for structured output in one mode: the message, plus that mode's proposal. One schema for all three
+ * modes would have more nullable fields than the API allows (16), and it rejects the request with a 400.
+ */
+export function coachReplySchema(mode: CoachMode) {
+  const field = PROPOSAL_FIELD[mode]
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['message', field],
+    properties: {
+      message: { type: 'string', description: 'What you say to the user. Plain text, short.' },
+      [field]: PROPOSAL_SCHEMAS[field],
+    },
+  }
+}
