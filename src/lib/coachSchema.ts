@@ -28,6 +28,8 @@ export interface ProposedDay {
   name: string
   focusMuscles: Muscle[]
   exercises: ProposedExercise[]
+  /** Alternating weeks: 1 = week A, 2 = week B; null when every week is the same. */
+  week: 1 | 2 | null
 }
 
 export interface ProposedPlan {
@@ -46,6 +48,7 @@ export const CHANGE_OPS = [
   'remove_day',
   'rename_day',
   'rename_plan',
+  'set_day_week',
 ] as const
 
 export type ChangeOp = (typeof CHANGE_OPS)[number]
@@ -63,6 +66,7 @@ export interface PlanChange {
   restSec: number | null
   position: number | null
   exercises: ProposedExercise[] | null
+  week: 1 | 2 | null
   reason: string
 }
 
@@ -130,11 +134,12 @@ export const COACH_REPLY_SCHEMA = {
           items: {
             type: 'object',
             additionalProperties: false,
-            required: ['name', 'focusMuscles', 'exercises'],
+            required: ['name', 'focusMuscles', 'exercises', 'week'],
             properties: {
               name: { type: 'string' },
               focusMuscles: { type: 'array', items: { type: 'string', enum: MUSCLES } },
               exercises: { type: 'array', items: exerciseSchema },
+              week: nullable({ type: 'integer', enum: [1, 2], description: 'Alternating weeks: 1 = week A, 2 = week B. Null when every week is the same.' }),
             },
           },
         },
@@ -145,7 +150,7 @@ export const COACH_REPLY_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['op', 'day', 'exercise', 'exerciseId', 'name', 'sets', 'repMin', 'repMax', 'restSec', 'position', 'exercises', 'reason'],
+        required: ['op', 'day', 'exercise', 'exerciseId', 'name', 'sets', 'repMin', 'repMax', 'restSec', 'position', 'exercises', 'week', 'reason'],
         properties: {
           op: { type: 'string', enum: [...CHANGE_OPS] },
           day: nullable({ type: 'string', description: 'Day ref, e.g. "d1".' }),
@@ -158,6 +163,7 @@ export const COACH_REPLY_SCHEMA = {
           restSec: nullable({ type: 'integer' }),
           position: nullable({ type: 'integer', description: '1-based position within the day, for add_exercise and move_exercise.' }),
           exercises: nullable({ type: 'array', items: exerciseSchema, description: 'The exercises of a new day, for add_day.' }),
+          week: nullable({ type: 'integer', enum: [1, 2], description: 'For add_day and set_day_week: 1 = week A, 2 = week B; null = every week.' }),
           reason: { type: 'string', description: 'Why, in a few words, shown next to the change.' },
         },
       },
