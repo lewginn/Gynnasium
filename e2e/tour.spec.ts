@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures'
-import { addPushPullLegsPlan, exerciseCard, finishWorkout, freezeClock, nav, setInput, typeInto, waitForLibrary } from './helpers'
+import { addPushPullLegsPlan, exerciseCard, finishWorkout, freezeClock, nav, openProfile, setInput, typeInto, waitForLibrary } from './helpers'
 
 // Walks through every screen in dark mode and saves numbered screenshots to test-results/tour/,
 // so the whole app can be reviewed at a glance without a phone.
@@ -85,6 +85,10 @@ test('screen tour', async ({ page }) => {
   await page.getByRole('button', { name: 'Upper body' }).tap()
   await page.getByRole('button', { name: 'Chest', exact: true }).tap()
   await snap('exercise-library')
-  await nav(page, 'Settings')
+  await nav(page, 'Social')
+  await snap('social')
+  await openProfile(page)
+  await snap('profile')
+  await page.getByRole('link', { name: 'Settings' }).tap()
   await snap('settings')
 })

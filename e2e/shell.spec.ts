@@ -11,7 +11,7 @@ test('opens on Today with a way to get started', async ({ page }) => {
 test('bottom nav reaches every section', async ({ page }) => {
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: 'Main' })
-  for (const name of ['Plans', 'Exercises', 'Progress', 'Settings', 'Today']) {
+  for (const name of ['Plans', 'Exercises', 'Progress', 'Social', 'Today']) {
     await nav.getByRole('link', { name }).tap()
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
   }
