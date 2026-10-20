@@ -159,12 +159,15 @@ export async function accessToken(): Promise<string | null> {
 
 const offline = "You're offline. Connect to the internet to sign in."
 
+/** Where emailed links should land: this site, or the website when running inside the iPhone app. */
+const linkOrigin = () => (location.protocol === 'capacitor:' && import.meta.env.VITE_API_ORIGIN) || window.location.origin
+
 /** Emails a one-tap login link that opens back in this app. */
 export async function sendLoginLink(email: string): Promise<string | null> {
   if (!navigator.onLine) return offline
   const { supabase } = await load()
   if (!supabase) return 'Sign-in isn’t set up on this version of the app.'
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } })
+  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: linkOrigin() } })
   return error ? authMessage(error.message) : null
 }
 
@@ -191,7 +194,7 @@ export async function createAccount(email: string, password: string): Promise<{ 
   if (!navigator.onLine) return { error: offline, confirm: false }
   const { supabase } = await load()
   if (!supabase) return { error: 'Sign-in isn’t set up on this version of the app.', confirm: false }
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: linkOrigin() } })
   if (error) return { error: authMessage(error.message), confirm: false }
   // An existing, confirmed email comes back with no identities (Supabase doesn't reveal that the account exists).
   if (data.user && data.user.identities?.length === 0) return { error: authMessage('already registered'), confirm: false }

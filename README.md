@@ -36,6 +36,18 @@ Copy `.env.example` to `.env.local` and fill in the Supabase anon key. The app r
 
 `npm run dev` doesn't serve `/api`; use a Vercel preview to try the coach for real. The e2e tests mock it.
 
+### iPhone app (Capacitor)
+
+`ios/` is a native iPhone app that wraps the same build as the website, using [Capacitor](https://capacitorjs.com). You need a Mac with Xcode.
+
+1. In `.env.local`, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (as for the website), plus `VITE_API_ORIGIN` set to the website's address, e.g. `https://gynnasiumapp.vercel.app`. The app is not served from the website, so it needs that address to reach the coach.
+2. Run `npm install`, then `npm run ios`. This builds the app, copies it into `ios/` and opens Xcode.
+3. In Xcode, select the **App** target, then **Signing & Capabilities**, and pick your Apple ID as the team. Choose your iPhone and press Run.
+   - With a free Apple ID, the app runs for 7 days before Xcode has to reinstall it.
+   - A paid developer account ($99 a year) removes that limit and allows TestFlight.
+
+Repeat step 2 after each change; Xcode keeps your signing settings. In the app, sign in with your email and password: emailed login links open the website, not the app. To change the app icon, edit `public/icon.svg` and run `npm run ios:assets`.
+
 ### Database
 
 `supabase/migrations/` holds the schema. Apply a migration by pasting it into the Supabase dashboard's SQL editor, or with the Supabase CLI (`supabase db push`).
