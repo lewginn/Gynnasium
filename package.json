@@ -19,6 +19,7 @@
     "@anthropic-ai/sdk": "^0.135.0",
     "@capacitor/core": "^8.5.3",
     "@capacitor/ios": "^8.5.3",
+    "@garmin/fitsdk": "^21.218.0",
     "@supabase/supabase-js": "^2.118.0",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",

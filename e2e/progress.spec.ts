@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures'
-import { addExerciseToWorkout, exerciseCard, finishWorkout, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
+import { addExerciseToWorkout, exerciseCard, finishWorkout, nav, openSettings, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 test('log bodyweight: 7-day average, change, chart, table, delete', async ({ page }) => {
   await page.clock.install({ time: new Date(2026, 9, 1, 8) })
@@ -38,7 +38,7 @@ test('log bodyweight: 7-day average, change, chart, table, delete', async ({ pag
   await expect(rows).toHaveCount(9)
 
   // Units follow settings.
-  await nav(page, 'Settings')
+  await openSettings(page)
   await page.getByRole('radio', { name: 'lb' }).tap()
   await nav(page, 'Progress')
   await expect(body).toContainText('lb')
