@@ -217,6 +217,19 @@ svg {
 .back-link:active {
   opacity: 0.5;
 }
+/* Back on the left, the page's one action (e.g. New chat) on the right. */
+.page-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: -36px -10px 8px;
+}
+.page-nav .back-link {
+  margin: 0;
+}
+.page-nav .back-link + .back-link {
+  gap: 6px;
+  padding: 0 10px;
+}
 .title-row {
   display: flex;
   align-items: center;
