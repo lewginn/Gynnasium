@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { ChartLine, Dumbbell, House, ListChecks, Settings } from 'lucide-react'
+import { ChartLine, Dumbbell, House, ListChecks, Users } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
 import WorkoutBar from './components/WorkoutBar'
 import CalendarPage from './pages/CalendarPage'
@@ -7,13 +7,15 @@ import CoachPage from './pages/CoachPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import EditSessionPage from './pages/EditSessionPage'
 import ExercisesPage from './pages/ExercisesPage'
-import FriendsPage from './pages/FriendsPage'
+import FriendPage from './pages/FriendPage'
 import GoalPage from './pages/GoalPage'
 import PlanEditPage from './pages/PlanEditPage'
 import PlansPage from './pages/PlansPage'
+import ProfilePage from './pages/ProfilePage'
 import ProgressPage from './pages/ProgressPage'
 import SessionPage from './pages/SessionPage'
 import SettingsPage from './pages/SettingsPage'
+import SocialPage from './pages/SocialPage'
 import TodayPage from './pages/TodayPage'
 import WorkoutPage from './pages/WorkoutPage'
 import { useSync } from './sync'
@@ -23,7 +25,7 @@ const NAV = [
   { to: '/plans', label: 'Plans', Icon: ListChecks },
   { to: '/exercises', label: 'Exercises', Icon: Dumbbell },
   { to: '/progress', label: 'Progress', Icon: ChartLine },
-  { to: '/settings', label: 'Settings', Icon: Settings },
+  { to: '/social', label: 'Social', Icon: Users },
 ]
 
 export default function App() {
@@ -53,7 +55,10 @@ export default function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/goal" element={<GoalPage />} />
           <Route path="/goal/coach" element={<CoachPage goal />} />
-          <Route path="/friends" element={<FriendsPage />} />
+          <Route path="/social" element={<SocialPage />} />
+          <Route path="/social/:id" element={<FriendPage />} />
+          <Route path="/friends" element={<Navigate to="/social" replace />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

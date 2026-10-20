@@ -20,6 +20,7 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - **Copy:** plain and short. No exclamation marks, no reassurance ("Nothing is lost"), no roadmap ("coming next"), no invented numbers (estimates the app can't back up). One name per thing across screens.
 - **Layout:** test at 390px wide (iPhone 15): the workout set grid is the tightest screen, including with RPE on. Today is a launchpad, in order: the hero (`.hero`: the workout in progress, else the up-next plan day with one big Start), This week (`lib/week.ts`), the goal card when there's a goal, the latest PR while fresh, other days, recent workouts. On an iPhone the hero's Start button is visible without scrolling, with This week starting just below. Don't make Today's sections appear one by one: render once loaded, so buttons don't move under a thumb.
 - In a workout, the next set of the exercise you're on gets `.set-row.current`.
+- **Navigation:** tabs are Today, Plans, Exercises, Progress, Social (five at most). Each tab's large title ends with `<ProfileButton />` (your photo, as in Apple's apps), which opens Profile: name and photo, what friends can see, account and backup, and the row into Settings.
 - Alternating weeks: a plan day may have `week` 1 (A) or 2 (B). Rotation order is `sortDays` (`src/lib/weeks.ts`): week A, then B. It follows the last day done, not the calendar. Show days with `dayLabel` wherever two weeks could have a day of the same name.
 
 ## Conventions
@@ -52,9 +53,11 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 - A goal's phases are plans with `goalId`, `startsOn` and `endsOn`. A phase covering a date wins over the active plan; `syncActivePhase()` makes it the active plan on Today. Re-planning soft-deletes the old phases.
 - The coach's goal mode (`/goal/coach`) returns `goalPlan`; `checkGoalPlan()` clamps phases to today…target date, removes overlaps, and drops implausible food targets. Applied only on Apply, like any proposal.
 
-## Friends (src/social/friends.ts, supabase/migrations/20261022090000_friends.sql)
+## Social (src/social/, src/lib/friends.ts, supabase/migrations/20261022090000_friends.sql + 20261024090000_social.sql)
 - Online-only, straight to Supabase (nothing in Dexie). Friendships are by email; accepting goes through `accept_friend()`.
-- Nobody gets RLS read access to another user's tables. Friends' data only comes out of the security-definer functions (`friend_list`, `friend_feed`) as a summary, so sync can never pull a friend's rows. Keep it that way.
+- Nobody gets RLS read access to another user's tables. Friends' data only comes out of the security-definer functions (`friend_list`, `friend_feed`, `friend_leaderboard`, `friend_profile`) as a summary, so sync can never pull a friend's rows. Keep it that way.
+- Each function honours the friend's `profiles.share_workouts` / `share_prs` on the server; the app never filters for privacy.
+- Your profile (`profiles`: name, photo as a ≤60 kB JPEG data URL, sharing switches) is cached per account in localStorage by `src/social/profile.ts`, so the header photo works offline. Edits are optimistic and roll back on failure.
 
 ## Charts (src/components/charts/)
 - Plain SVG, no chart library. 2px lines, ringed end-dot labelled with the latest value, 1px recessive grid, crosshair + tooltip on touch/hover/arrow keys, legend only for 2+ series, a "Show as table" view.

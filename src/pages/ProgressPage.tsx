@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronRight, Trophy, Users } from 'lucide-react'
+import { ChevronRight, Trophy } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ProfileButton } from '../components/Avatar'
 import BodyCard from '../components/BodyCard'
 import ColumnChart from '../components/charts/ColumnChart'
 import Sparkline from '../components/charts/Sparkline'
@@ -24,16 +25,10 @@ export default function ProgressPage() {
     <>
       <header className="page-header">
         <h1>Progress</h1>
+        <ProfileButton />
       </header>
 
       <BodyCard />
-
-      <Link to="/friends" className="card list-row-split friends-link">
-        <span className="row">
-          <Users size={20} aria-hidden /> Friends
-        </span>
-        <ChevronRight size={20} aria-hidden className="muted" />
-      </Link>
 
       {!hasWorkouts && sessions && (
         <section className="card empty">

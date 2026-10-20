@@ -1,4 +1,5 @@
-import AccountCard from '../components/AccountCard'
+import { ChevronLeft } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { updateSettings, useSettings } from '../db/settings'
 import type { Units } from '../lib/types'
 
@@ -10,9 +11,11 @@ export default function SettingsPage() {
   return (
     <>
       <header className="page-header">
+        <Link to="/profile" className="back-link">
+          <ChevronLeft size={18} aria-hidden /> Profile
+        </Link>
         <h1>Settings</h1>
       </header>
-      <AccountCard />
       <section className="card">
         <h2 id="units-label">Units</h2>
         <div className="segmented" role="radiogroup" aria-labelledby="units-label">

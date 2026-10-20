@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronRight, MessagesSquare, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ProfileButton } from '../components/Avatar'
 import { db } from '../db/db'
 import { alive, createPlan, createPlanFromTemplate } from '../db/repo'
 import { PLAN_TEMPLATES } from '../lib/templates'
@@ -27,6 +28,7 @@ export default function PlansPage() {
     <>
       <header className="page-header">
         <h1>Plans</h1>
+        <ProfileButton />
       </header>
 
       {plans && plans.length > 0 && (

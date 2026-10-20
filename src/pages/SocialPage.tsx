@@ -1,37 +1,30 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronLeft, RefreshCw, Trophy, TriangleAlert, UserPlus } from 'lucide-react'
+import { ChevronRight, RefreshCw, Trophy, TriangleAlert, UserPlus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import Avatar, { ProfileButton } from '../components/Avatar'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
 import { formatDay } from '../lib/format'
-import { checkFriendEmail, feedItems, groupFriends, type FeedRow, type FriendGroups } from '../lib/friends'
-import {
-  FriendsError,
-  acceptFriend,
-  friendFeed,
-  friendList,
-  myDisplayName,
-  removeFriend,
-  sendFriendRequest,
-  setDisplayName,
-} from '../social/friends'
-import { useConfirm } from '../state/confirm'
+import { checkFriendEmail, feedItems, groupFriends, leaderboardSince, rankLeaderboard, type FeedRow, type FriendGroups, type LeaderRow } from '../lib/friends'
+import { FriendsError, acceptFriend, friendFeed, friendLeaderboard, friendList, removeFriend, sendFriendRequest } from '../social/friends'
+import { useMyProfile } from '../social/profile'
 import { useSync } from '../sync'
 
 interface Loaded {
-  name: string | null
   groups: FriendGroups
   feed: FeedRow[]
+  leaders: LeaderRow[]
 }
 
 const message = (e: unknown) => (e instanceof FriendsError ? e.message : 'Something went wrong. Try again.')
+const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`
 
-/** Friends: add people by email; once they accept, you see each other's recent workouts and PRs. */
-export default function FriendsPage() {
+/** Social: this week's leaderboard, requests, friends' recent workouts and PRs, and your friends. */
+export default function SocialPage() {
   const sync = useSync()
   const settings = useSettings()
-  const confirm = useConfirm()
+  const profile = useMyProfile()
   const library = useLiveQuery(async () => new Map((await db.exercises.toArray()).map((e) => [e.id, e])))
   const [data, setData] = useState<Loaded | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -40,8 +33,8 @@ export default function FriendsPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [name, rows, feed] = await Promise.all([myDisplayName(), friendList(), friendFeed()])
-      setData({ name, groups: groupFriends(rows), feed })
+      const [rows, feed, leaders] = await Promise.all([friendList(), friendFeed(), friendLeaderboard(leaderboardSince(Date.now()))])
+      setData({ groups: groupFriends(rows), feed, leaders })
       setError(null)
     } catch (e) {
       setError(message(e))
@@ -64,15 +57,13 @@ export default function FriendsPage() {
   }
 
   const items = useMemo(() => (data && library ? feedItems(data.feed, library, settings) : []), [data, library, settings])
+  const ranked = useMemo(() => (data ? rankLeaderboard(data.leaders) : []), [data])
 
   return (
     <>
       <header className="page-header">
-        <Link to="/progress" className="back-link">
-          <ChevronLeft size={18} aria-hidden /> Progress
-        </Link>
-        <h1>Friends</h1>
-        <p className="muted">Add friends by email. Once they accept, you each see the other's recent workouts and PRs.</p>
+        <h1>Social</h1>
+        <ProfileButton />
       </header>
 
       {error && (
@@ -88,7 +79,18 @@ export default function FriendsPage() {
 
       {data && (
         <>
-          {!data.name && <NameCard name={data.name} onSave={(name) => act(() => setDisplayName(name))()} />}
+          {!profile.name && (
+            <Link to="/profile" className="card list-row-split social-nudge">
+              <span className="row">
+                <Avatar name={sync.account?.email} src={profile.avatar} size={40} />
+                <span>
+                  <span className="list-title">Add your name and photo</span>
+                  <span className="list-meta">So friends know it's you.</span>
+                </span>
+              </span>
+              <ChevronRight size={20} aria-hidden className="muted" />
+            </Link>
+          )}
 
           {data.groups.incoming.length > 0 && (
             <>
@@ -96,6 +98,7 @@ export default function FriendsPage() {
               <ul className="list">
                 {data.groups.incoming.map((r) => (
                   <li key={r.id} className="list-row friend-row">
+                    <Avatar name={r.name} src={r.avatar} />
                     <span className="grow">
                       <span className="list-title">{r.name}</span>
                       <span className="list-meta">{r.email}</span>
@@ -114,56 +117,91 @@ export default function FriendsPage() {
 
           {data.groups.friends.length > 0 && (
             <>
+              <h2 className="section-label">This week</h2>
+              <ol className="list" aria-label="This week’s leaderboard">
+                {ranked.map((r) => {
+                  const body = (
+                    <>
+                      <span className={`leader-rank${r.rank === 1 && r.workouts > 0 ? ' first' : ''}`}>{r.rank}</span>
+                      <Avatar name={r.name} src={r.avatar} size={36} />
+                      <span className="grow">
+                        <span className="list-title">{r.is_me ? 'You' : r.name}</span>
+                        <span className="list-meta">
+                          {plural(r.workouts, 'workout')} · {plural(r.sets, 'set')}
+                        </span>
+                      </span>
+                    </>
+                  )
+                  return (
+                    <li key={r.user_id}>
+                      {r.is_me ? (
+                        <div className="list-row leader-row leader-me">{body}</div>
+                      ) : (
+                        <Link to={`/social/${r.user_id}`} className="list-row leader-row">
+                          {body}
+                          <ChevronRight size={18} aria-hidden className="muted" />
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+              <p className="muted small list-footer">Workouts since Monday, then working sets.</p>
+
               <h2 className="section-label">Recent workouts</h2>
               {items.length === 0 ? (
                 <p className="muted small friends-empty">Nothing in the last 30 days.</p>
               ) : (
                 <ul className="list" aria-label="Friends’ workouts">
                   {items.map((item) => (
-                    <li key={item.id} className="list-row friend-workout">
-                      <span className="list-title">
-                        {item.who} · {item.workout}
-                      </span>
-                      <span className="list-meta">
-                        {formatDay(item.startedAt)} · {item.sets} {item.sets === 1 ? 'set' : 'sets'}
-                      </span>
-                      {item.prs.map((pr, i) => (
-                        <span key={i} className="friend-pr">
-                          <Trophy size={12} aria-hidden className="pr-mark" /> {pr.exercise}: {pr.set}
-                          <span className="muted"> · {pr.kinds}</span>
+                    <li key={item.id}>
+                      <Link to={`/social/${item.friendId}`} className="list-row friend-workout">
+                        <Avatar name={item.who} src={item.avatar} />
+                        <span className="grow">
+                          <span className="list-title">
+                            {item.who} · {item.workout}
+                          </span>
+                          <span className="list-meta">
+                            {formatDay(item.startedAt)} · {plural(item.sets, 'set')}
+                          </span>
+                          {item.prs.map((pr, i) => (
+                            <span key={i} className="friend-pr">
+                              <Trophy size={12} aria-hidden className="pr-mark" />
+                              <span>
+                                {pr.exercise}: {pr.set}
+                                <span className="muted"> · {pr.kinds}</span>
+                              </span>
+                            </span>
+                          ))}
                         </span>
-                      ))}
+                      </Link>
                     </li>
                   ))}
                 </ul>
               )}
             </>
           )}
+
           <h2 className="section-label">Friends</h2>
           {data.groups.friends.length === 0 && data.groups.outgoing.length === 0 ? (
             <p className="muted small friends-empty">No friends yet.</p>
           ) : (
-            <ul className="list">
+            <ul className="list" aria-label="Friends">
               {data.groups.friends.map((f) => (
-                <li key={f.id} className="list-row friend-row">
-                  <span className="grow">
-                    <span className="list-title">{f.name}</span>
-                    <span className="list-meta">{f.email}</span>
-                  </span>
-                  <button
-                    className="btn btn-sm btn-danger-text"
-                    aria-label={`Remove ${f.name}`}
-                    onClick={async () => {
-                      if (await confirm({ title: `Remove ${f.name}?`, message: 'You stop seeing each other’s workouts.', action: 'Remove friend', destructive: true }))
-                        await act(() => removeFriend(f.id))()
-                    }}
-                  >
-                    Remove
-                  </button>
+                <li key={f.id}>
+                  <Link to={`/social/${f.friend_id}`} className="list-row friend-row">
+                    <Avatar name={f.name} src={f.avatar} />
+                    <span className="grow">
+                      <span className="list-title">{f.name}</span>
+                      <span className="list-meta">{f.email}</span>
+                    </span>
+                    <ChevronRight size={20} aria-hidden className="muted" />
+                  </Link>
                 </li>
               ))}
               {data.groups.outgoing.map((f) => (
                 <li key={f.id} className="list-row friend-row">
+                  <Avatar name={f.email} src={null} />
                   <span className="grow">
                     <span className="list-title">{f.email}</span>
                     <span className="list-meta">Waiting for them to accept</span>
@@ -177,47 +215,11 @@ export default function FriendsPage() {
           )}
 
           <AddFriend own={sync.account?.email} onSend={(email) => act(() => sendFriendRequest(email))()} />
-          {data.name && <NameCard name={data.name} onSave={(name) => act(() => setDisplayName(name))()} />}
         </>
       )}
 
       {!data && !error && <p className="muted">Loading…</p>}
     </>
-  )
-}
-
-function NameCard({ name, onSave }: { name: string | null; onSave: (name: string) => Promise<void> }) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(name ?? '')
-  if (name && !editing)
-    return (
-      <section className="card row">
-        <span className="grow">
-          Friends see you as <strong>{name}</strong>
-        </span>
-        <button className="btn btn-sm" onClick={() => setEditing(true)}>
-          Change
-        </button>
-      </section>
-    )
-  return (
-    <form
-      className="card stack-sm"
-      aria-label="Your name"
-      onSubmit={async (e) => {
-        e.preventDefault()
-        await onSave(value)
-        setEditing(false)
-      }}
-    >
-      <label className="field">
-        <span>Your name</span>
-        <input className="input" value={value} maxLength={40} required placeholder="What friends see" onChange={(e) => setValue(e.target.value)} />
-      </label>
-      <button type="submit" className="btn btn-primary btn-block" disabled={!value.trim()}>
-        Save name
-      </button>
-    </form>
   )
 }
 
@@ -254,7 +256,7 @@ function AddFriend({ own, onSend }: { own: string | undefined; onSend: (email: s
       <button type="submit" className="btn btn-block" disabled={!value.trim()}>
         <UserPlus size={18} aria-hidden /> Send request
       </button>
-      <p className="muted small">They see it next time they open Friends. Nothing is emailed.</p>
+      <p className="muted small">They see it next time they open Social. Nothing is emailed.</p>
     </form>
   )
 }

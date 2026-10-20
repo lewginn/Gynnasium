@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, Check, ChevronRight, Flag, Play, Plus, Trophy } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ProfileButton } from '../components/Avatar'
 import Sheet from '../components/Sheet'
 import { db } from '../db/db'
 import {
@@ -132,6 +133,7 @@ export default function TodayPage() {
       <header className="page-header">
         <span className="header-date">{date}</span>
         <h1>Today</h1>
+        <ProfileButton />
       </header>
       {loaded && (
         <>

@@ -4,6 +4,19 @@ export const shot = (page: Page, name: string) => page.screenshot({ path: `test-
 
 export const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name }).tap()
 
+/** Profile opens from your photo at the end of a tab's large title. */
+export async function openProfile(page: Page) {
+  if (!(await page.getByRole('link', { name: 'Profile' }).isVisible())) await nav(page, 'Today')
+  await page.getByRole('link', { name: 'Profile' }).tap()
+  await expect(page.getByRole('heading', { level: 1, name: 'Profile' })).toBeVisible()
+}
+
+/** Settings is a row in Profile. */
+export async function openSettings(page: Page) {
+  await openProfile(page)
+  await page.getByRole('link', { name: 'Settings' }).tap()
+}
+
 /** The exercise library seeds into IndexedDB on first launch; wait for it. */
 export async function waitForLibrary(page: Page) {
   await page.goto('/exercises')
