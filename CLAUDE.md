@@ -10,12 +10,17 @@ The owner tests and signs off on PRs; Claude writes the code.
 - **Weights are stored in kg** (`weightKg`), converted only for display via `src/lib/units.ts`.
 
 ## Design
-The app lives on an iPhone, so it speaks iOS: semantic colours that follow light/dark, iOS text sizes, grouped lists, sheets. Imitating Apple is not the goal; being clear one-handed mid-set is. Build everything from the tokens in `src/index.css`.
-- **Colour:** tokens only (`--label`, `--label-2`, `--cell`, `--bg`, `--fill-3`, `--separator`, `--tint`, `--pr`, `--on-pr`, …). No literal colours in rules. For WCAG AA (enforced by the axe test in `e2e/qa.spec.ts`), the light tint is #1b7032 and `--label-2` is 76%, both darker than Apple's values.
-- **Type:** iOS sizes (body 17, subhead 15, label 13, large title 34). One label style: 13px semibold, secondary colour, sentence case. No uppercase, no letter-spacing on labels. Numbers use `--font-numeric` (SF Pro Rounded where available) with tabular figures.
-- **Shape:** three radii, `--radius-s` (controls), `--radius-m` (rows inside cards), `--radius-l` (cards, sheets, the rest bar). Capsules only for buttons, chips, switches, progress bars and the floating bars.
-- **Surfaces:** no gradients or decorative shadows. Glass (`.glass`) only on bars that float over content: the tab bar and `WorkoutBar`; the rest bar uses the same material.
-- **Components:** lists are `.list` / `.list-row` with `.section-label` headers; cards are `.card`; buttons `.btn` (tint on gray) and `.btn-primary`. PRs are always `.pr-mark` (trophy on yellow). Icons are lucide only.
+The app lives on an iPhone. One dark theme, warm and quiet: near-black panels, champagne gold for anything you can act on, burnt orange (ember) for heat. iOS text sizes, grouped lists and sheets. Being clear one-handed mid-set beats decoration. Build everything from the tokens in `src/index.css`.
+- **Colour:** tokens only (`--bg`, `--cell`, `--sheet`, `--border`, `--label`, `--label-2`, `--fill-3`, `--separator`, `--tint`, `--tint-soft`, `--tint-line`, `--pr`, `--on-pr`, …). No literal colours in rules. Dark only: no light theme, `color-scheme: dark`.
+  - Gold `--gold` #E7BA80 (= `--tint`): buttons, links, selection, progress. Text on gold is `--on-tint` (dark).
+  - Ember `--ember` #D45D14: PRs (`--pr`, with dark `--on-pr`; white on ember fails AA), warm-ups, low volume, the glow.
+  - Charts use `--chart-primary` #CF7F2E (a deeper amber that passes the dataviz validator on `--cell`; the gold itself is too light for a data mark) and `--chart-muted` for de-emphasis.
+  - Contrast is enforced by the axe test in `e2e/qa.spec.ts`; check new colours against `--cell` and `--fill-3`.
+- **Type:** iOS sizes (body 17, subhead 15, label 13, large title 34, semibold). One label style: 13px semibold, secondary colour, sentence case. No uppercase, no letter-spacing on labels. Numbers use `--font-numeric` with tabular figures.
+- **Shape:** three radii, `--radius-s` (controls), `--radius-m` (rows inside cards), `--radius-l` (cards, sheets, the rest bar). Capsules only for buttons, chips, switches, progress bars and bars.
+- **Surfaces:** cards are `--cell` with a 1px `--border`; sheets are `--sheet`. One decorative gradient: the ember glow behind the top of every page (`.app::before`); a workout in progress glows ember too. No other gradients or decorative shadows.
+- **Bars:** the tab bar is docked to the bottom edge (active tab = gold pill); `WorkoutBar` is a sheet docked on top of it; the rest bar floats in a workout. They use the `.glass` material.
+- **Components:** lists are `.list` / `.list-row` with `.section-label` headers; cards are `.card`; buttons `.btn` (outlined gold) and `.btn-primary` (filled gold). Selected chips and segments are outlined gold. Plain text links get a dotted underline. PRs are always `.pr-mark` (trophy on ember). Icons are lucide only.
 - **Asking before something irreversible:** `useConfirm()` (`src/state/confirm.ts`), which opens a sheet. Never `window.confirm`. The action button says what it does ("Delete plan"), never "OK"; don't ask twice for the same thing.
 - **Copy:** plain and short. No exclamation marks, no reassurance ("Nothing is lost"), no roadmap ("coming next"), no invented numbers (estimates the app can't back up). One name per thing across screens.
 - **Layout:** test at 390px wide (iPhone 15): the workout set grid is the tightest screen, including with RPE on. Today is a launchpad, in order: the hero (`.hero`: the workout in progress, else the up-next plan day with one big Start), This week (`lib/week.ts`), the goal card when there's a goal, the latest PR while fresh, other days, recent workouts. On an iPhone the hero's Start button is visible without scrolling, with This week starting just below. Don't make Today's sections appear one by one: render once loaded, so buttons don't move under a thumb.
@@ -62,6 +67,7 @@ The app lives on an iPhone, so it speaks iOS: semantic colours that follow light
 ## iPhone app (ios/, capacitor.config.ts)
 - Capacitor wraps `dist/`. Inside it, `location.protocol` is `capacitor:`. There's no `/api` on that origin, so the coach calls `${VITE_API_ORIGIN}/api/coach`, and `api/coach.ts` allows CORS from `capacitor://localhost` only. Emailed links go to the website (`linkOrigin()`), and the login screen hides the email-link option in the app.
 - Don't edit `ios/App/App/public` (it's generated by `cap sync`). The icon and launch screen come from `npm run ios:assets`.
+- The app is dark-only: `UIUserInterfaceStyle` is `Dark` in `Info.plist` (light status bar text, dark system UI) and the web view's `backgroundColor` in `capacitor.config.ts` is the theme's `--bg`. Change them with the theme.
 
 ## Charts (src/components/charts/)
 - Plain SVG, no chart library. 2px lines, ringed end-dot labelled with the latest value, 1px recessive grid, crosshair + tooltip on touch/hover/arrow keys, legend only for 2+ series, a "Show as table" view.

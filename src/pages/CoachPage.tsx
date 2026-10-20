@@ -107,6 +107,15 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
   const [thinking, setThinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // The box grows with what's typed, up to its CSS max-height, then scrolls.
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+    input.style.height = 'auto'
+    input.style.height = `${input.scrollHeight}px`
+  }, [draft])
 
   useEffect(() => {
     saveChat(chatKey, entries)
@@ -301,21 +310,28 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
         <label className="sr-only" htmlFor="coach-input">
           Message Claude
         </label>
-        <textarea
-          id="coach-input"
-          className="input composer-input"
-          rows={2}
-          maxLength={4000}
-          placeholder={{ build: 'e.g. 4 days, gym, build muscle', edit: 'e.g. No bench free, swap it', goal: 'e.g. I can train Mon, Wed, Fri' }[mode]}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault()
-              void send(draft)
-            }
-          }}
-        />
+        <div className="composer-field">
+          <textarea
+            ref={inputRef}
+            id="coach-input"
+            className="composer-input"
+            rows={3}
+            maxLength={MAX_MESSAGE}
+            aria-describedby="coach-count"
+            placeholder={{ build: 'e.g. 4 days, gym, build muscle', edit: 'e.g. No bench free, swap it', goal: 'e.g. I can train Mon, Wed, Fri' }[mode]}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault()
+                void send(draft)
+              }
+            }}
+          />
+          <span id="coach-count" className={`composer-count${draft.length >= MAX_MESSAGE ? ' full' : ''}`}>
+            {draft.length.toLocaleString()} / {MAX_MESSAGE.toLocaleString()}
+          </span>
+        </div>
         <button type="submit" className="btn btn-primary composer-send" aria-label="Send" disabled={thinking || !draft.trim()}>
           <ArrowUp size={22} aria-hidden />
         </button>
@@ -323,6 +339,9 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
     </>
   )
 }
+
+/** Characters per message; the server takes up to 4,000 a turn. */
+const MAX_MESSAGE = 4000
 
 const KIND_ICON: Record<ChangeKind, typeof Plus> = { add: Plus, remove: Minus, swap: ArrowLeftRight, edit: Pencil, move: ArrowUpDown }
 const KIND_LABEL: Record<ChangeKind, string> = { add: 'Add', remove: 'Remove', swap: 'Swap', edit: 'Change', move: 'Move' }

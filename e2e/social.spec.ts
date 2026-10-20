@@ -119,7 +119,7 @@ test('profile: name and photo from the header, what friends see, and Settings', 
   await shot(page, 'p4-profile-edit')
   await sheet.getByRole('button', { name: 'Save' }).tap()
   await expect(page.getByRole('region', { name: 'You' })).toContainText('Lewis')
-  // Saving is optimistic: the screen changes before the request goes out, so wait for it.
+  // Saves are optimistic (the page updates first), so wait for the request rather than assume it has landed.
   await expect.poll(() => state.saves[0]).toMatchObject({ display_name: 'Lewis', avatar: expect.stringMatching(/^data:image\/jpeg;base64,/) })
 
   // What friends see is saved to the server.
