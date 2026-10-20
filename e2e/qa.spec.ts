@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { addExerciseToWorkout, addPushPullLegsPlan, confirmSheet, exerciseCard, finishWorkout, freezeClock, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
+import { addExerciseToWorkout, addPushPullLegsPlan, confirmSheet, exerciseCard, finishWorkout, freezeClock, nav, openProfile, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 // Broader QA coverage: the less-travelled paths, phone hardware calls, accessibility and speed.
 
@@ -396,10 +396,14 @@ async function axeMainScreens(page: Page) {
   await page.getByRole('button', { name: 'The squat rack is taken today' }).tap()
   await expect(page.getByRole('region', { name: 'Proposed changes' })).toBeVisible()
   await check('coach')
-  for (const name of ['Today', 'Exercises', 'Progress', 'Settings']) {
+  for (const name of ['Today', 'Exercises', 'Progress', 'Social']) {
     await nav(page, name)
     await check(name)
   }
+  await openProfile(page)
+  await check('Profile')
+  await page.getByRole('link', { name: 'Settings' }).tap()
+  await check('Settings')
   await nav(page, 'Today')
   await page.getByRole('button', { name: 'Start Push' }).tap()
   await exerciseCard(page, 'Barbell Bench Press - Medium Grip').getByRole('button', { name: 'Complete set 1' }).tap()

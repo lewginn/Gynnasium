@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { SUPABASE, TEST_USER, expect, fakeJwt, signInAs, test, userJson } from './fixtures'
-import { addExerciseToWorkout, confirmSheet, exerciseCard, finishWorkout, nav, setInput, shot, typeInto, waitForLibrary } from './helpers'
+import { addExerciseToWorkout, confirmSheet, exerciseCard, finishWorkout, nav, openProfile, setInput, shot, typeInto, waitForLibrary } from './helpers'
 
 // Login and backup against a mocked Supabase: these exercise the real app code and check the exact requests it sends.
 
@@ -59,7 +59,7 @@ test.describe('signed out', () => {
     const { token, exp } = fakeJwt()
     await page.goto(`/#access_token=${token}&expires_at=${exp}&expires_in=3600&refresh_token=r&token_type=bearer&type=magiclink`)
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
-    await nav(page, 'Settings')
+    await openProfile(page)
     await expect(page.getByRole('region', { name: 'Account & backup' })).toContainText(`Signed in as ${TEST_USER.email}`)
   })
 
@@ -131,7 +131,7 @@ test('signed in: an expired login with no signal still opens the app', async ({ 
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
   await page.clock.fastForward(5_000)
   await expect(page.getByRole('form', { name: 'Sign in' })).toHaveCount(0)
-  await nav(page, 'Settings')
+  await openProfile(page)
   await expect(page.getByRole('region', { name: 'Account & backup' })).toContainText(/Offline|Backed up|Not backed up/)
 })
 
@@ -153,7 +153,7 @@ test('a finished workout is backed up with the right fields', async ({ page }) =
   expect(Object.keys(done[0])).not.toContain('user_id') // set by the server from the login
   expect(rec.upserts.workout_sessions.at(-1)!.ended_at).toBeTruthy()
 
-  await nav(page, 'Settings')
+  await openProfile(page)
   await expect(page.getByRole('region', { name: 'Account & backup' })).toContainText(/Backed up (just now|\d+ min ago)/)
   await shot(page, 'p2-signed-in')
 })
@@ -176,7 +176,7 @@ test('set a password from Settings, to sign in without waiting for an email', as
     if (route.request().method() === 'PUT') updates.push(route.request().postDataJSON())
     return route.fulfill({ status: 200, json: userJson() })
   })
-  await page.goto('/settings')
+  await page.goto('/profile')
   await page.getByRole('button', { name: 'Set a password' }).tap()
   const sheet = page.getByRole('dialog', { name: 'Set a password' })
   await sheet.getByLabel('New password').fill('correct horse')
@@ -189,8 +189,9 @@ test('set a password from Settings, to sign in without waiting for an email', as
 test('settings are backed up when changed', async ({ page }) => {
   const rec = await recordSupabase(page)
   await page.goto('/settings')
-  await expect(page.getByRole('region', { name: 'Account & backup' })).toContainText('Signed in')
   await page.getByRole('radio', { name: 'lb' }).tap()
+  await page.getByRole('link', { name: 'Profile' }).tap()
+  await expect(page.getByRole('region', { name: 'Account & backup' })).toContainText('Signed in')
   await page.getByRole('button', { name: 'Back up now' }).tap()
   await expect.poll(() => rec.settings.at(-1)).toMatchObject({ units: 'lb', user_id: TEST_USER.id })
 })
@@ -200,7 +201,7 @@ test('sign out returns to the login screen; signing back in keeps your data', as
   await nav(page, 'Progress')
   await page.getByRole('region', { name: 'Body' }).getByRole('button', { name: 'Log' }).tap()
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).tap()
-  await nav(page, 'Settings')
+  await openProfile(page)
   await page.getByRole('button', { name: 'Sign out' }).tap()
   await confirmSheet(page, 'Sign out')
   await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible()
@@ -215,7 +216,7 @@ test("someone else signing in on this phone doesn't see your data", async ({ pag
   await nav(page, 'Plans')
   await page.getByRole('button', { name: 'Use Push / Pull / Legs template' }).tap()
   await expect(page.getByRole('heading', { level: 1, name: 'Push / Pull / Legs' })).toBeVisible()
-  await nav(page, 'Settings')
+  await openProfile(page)
   await page.getByRole('button', { name: 'Sign out' }).tap()
   await confirmSheet(page, 'Sign out')
   await expect(page.getByRole('form', { name: 'Sign in' })).toBeVisible()
@@ -232,6 +233,6 @@ test("someone else signing in on this phone doesn't see your data", async ({ pag
   await other.goto('/plans')
   await expect(other.getByText(/No plans|Start from a template/).first()).toBeVisible()
   await expect(other.getByRole('link', { name: /Push \/ Pull \/ Legs/ })).toHaveCount(0)
-  await other.goto('/settings')
+  await other.goto('/profile')
   await expect(other.getByRole('region', { name: 'Account & backup' })).toContainText(friend.email)
 })

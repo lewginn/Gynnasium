@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ProfileButton } from '../components/Avatar'
 import { db } from '../db/db'
 import { EQUIPMENT_LABELS, MUSCLES_BY_REGION, MUSCLE_LABELS, PATTERN_LABELS, REGION_LABELS } from '../lib/labels'
 import { rankSearchResults } from '../lib/suggest'
@@ -37,6 +38,7 @@ export default function ExercisesPage() {
     <>
       <header className="page-header">
         <h1>Exercises</h1>
+        <ProfileButton />
       </header>
       <div className="filters">
         <input
