@@ -44,10 +44,12 @@ test('screen tour', async ({ page }) => {
   await page.getByRole('link', { name: 'Done' }).tap()
   await page.clock.fastForward(2 * 86_400_000)
 
-  // Second workout: pre-filled, a PR, the rest timer.
+  // Second workout: progressive overload (every set hit 8, the top of 5–8), a PR, the rest timer.
   await page.getByRole('button', { name: /Start Pull/ }).waitFor()
   await page.getByRole('button', { name: 'Start Push' }).tap()
-  await expect(setInput(bench, 1, 'weight')).toHaveValue('80')
+  await expect(setInput(bench, 1, 'weight')).toHaveValue('82.5')
+  await expect(setInput(bench, 1, 'reps')).toHaveValue('5')
+  await expect(bench.getByText('Hit 8 on every set last time: up to 82.5kg.')).toBeVisible()
   await snap('workout-prefilled')
   await bench.getByRole('button', { name: 'Increase Set 1 weight' }).tap()
   await bench.getByRole('button', { name: 'Complete set 1' }).tap()

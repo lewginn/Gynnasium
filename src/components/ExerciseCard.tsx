@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowDown, ArrowLeftRight, ArrowUp, Check, EllipsisVertical, Info, Plus, Trash2, Trophy } from 'lucide-react'
+import { ArrowDown, ArrowLeftRight, ArrowUp, Check, EllipsisVertical, Info, Plus, Trash2, TrendingDown, TrendingUp, Trophy } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -7,6 +7,7 @@ import {
   completeSet,
   deleteSet,
   lastPerformance,
+  progressionFor,
   moveSessionExercise,
   removeSessionExercise,
   swapSessionExercise,
@@ -45,6 +46,11 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
   const [swapping, setSwapping] = useState(false)
   const [setMenuFor, setSetMenuFor] = useState<SetLog | null>(null)
   const previous = useLiveQuery(() => lastPerformance(exercise.id, sessionId), [exercise.id, sessionId])
+  // Why the sets are pre-filled as they are: progressive overload from the last couple of workouts.
+  const progression = useLiveQuery(
+    () => (showLastTime ? progressionFor(exercise, sessionId) : undefined),
+    [exercise.id, exercise.logging, sessionId, showLastTime, settings.units],
+  )
   const swaps = useMemo(() => (swapping ? swapSuggestions(library, exercise) : []), [swapping, library, exercise])
   const logging = exercise.logging
 
@@ -67,6 +73,12 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
       {showLastTime && (
         <p className="muted small last-time">
           {previous && previous.length > 0 ? <>Last time: {summariseSets(previous, settings, logging)}</> : 'No history yet'}
+        </p>
+      )}
+      {showLastTime && progression?.note && (
+        <p className={`small progression-note progression-${progression.kind}`}>
+          {progression.kind === 'deload' ? <TrendingDown size={16} aria-hidden /> : <TrendingUp size={16} aria-hidden />}
+          {progression.note}
         </p>
       )}
 
