@@ -17,7 +17,7 @@ test('alternating weeks: week A, then week B, then back to A', async ({ page }) 
 
   await page.getByRole('checkbox', { name: /Alternate weeks/ }).tap()
   await expect(page.getByRole('checkbox', { name: /Alternate weeks/ })).toBeChecked()
-  await expect(page.getByRole('heading', { name: 'Week A' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: 'Week A' })).toBeVisible()
   // Legs moves to week B.
   await page.getByRole('group', { name: 'Week A days' }).getByRole('button', { name: 'Legs · Week A' }).tap()
   await page.getByRole('radiogroup', { name: 'Week' }).getByRole('radio', { name: 'Week B' }).tap()

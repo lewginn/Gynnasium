@@ -13,6 +13,7 @@ It's a web app you can install to your home screen, and it works offline.
 | 2 | Login (email link), sync & backup, body metrics, progress charts | ✅ |
 | 3 | AI plan builder and chat (Claude) | ✅ |
 | 4 | Progressive overload, Garmin FIT export, native app wrapper | Next |
+| 5 | Goals to a date, weekly schedule, calendar and days off, phased plans and food targets from the coach | ✅ |
 
 ## Development
 

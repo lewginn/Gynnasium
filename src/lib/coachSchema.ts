@@ -1,7 +1,7 @@
 // The contract between the app and /api/coach. Shared by both, so: no runtime imports, and .js import paths (the server runs it as plain Node ESM).
 import type { Muscle } from './types.js'
 
-export type CoachMode = 'build' | 'edit'
+export type CoachMode = 'build' | 'edit' | 'goal'
 
 export interface CoachTurn {
   role: 'user' | 'assistant'
@@ -30,6 +30,8 @@ export interface ProposedDay {
   exercises: ProposedExercise[]
   /** Alternating weeks: 1 = week A, 2 = week B; null when every week is the same. */
   week: 1 | 2 | null
+  /** Weekdays it's trained on, 0 = Monday … 6 = Sunday; null for no fixed days. */
+  weekdays: number[] | null
 }
 
 export interface ProposedPlan {
@@ -70,10 +72,32 @@ export interface PlanChange {
   reason: string
 }
 
+/** One block of a plan to a goal date, e.g. "Build" for six weeks. Dates are YYYY-MM-DD, inclusive. */
+export interface ProposedPhase {
+  name: string
+  startsOn: string
+  endsOn: string
+  focus: string
+  plan: ProposedPlan
+}
+
+export interface ProposedNutrition {
+  calories: number
+  proteinG: number
+  note: string
+}
+
+export interface ProposedGoalPlan {
+  phases: ProposedPhase[]
+  nutrition: ProposedNutrition | null
+}
+
 export interface CoachReply {
   message: string
   newPlan: ProposedPlan | null
   changes: PlanChange[] | null
+  /** Goal mode: phases from today to the goal date, with nutrition targets. */
+  goalPlan: ProposedGoalPlan | null
 }
 
 export interface CoachError {
@@ -115,14 +139,7 @@ const exerciseSchema = {
   },
 }
 
-/** JSON schema for structured output: every reply has this shape. */
-export const COACH_REPLY_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['message', 'newPlan', 'changes'],
-  properties: {
-    message: { type: 'string', description: 'What you say to the user. Plain text, short.' },
-    newPlan: nullable({
+const planSchema = {
       type: 'object',
       additionalProperties: false,
       required: ['name', 'goal', 'days'],
@@ -134,17 +151,31 @@ export const COACH_REPLY_SCHEMA = {
           items: {
             type: 'object',
             additionalProperties: false,
-            required: ['name', 'focusMuscles', 'exercises', 'week'],
+            required: ['name', 'focusMuscles', 'exercises', 'week', 'weekdays'],
             properties: {
               name: { type: 'string' },
               focusMuscles: { type: 'array', items: { type: 'string', enum: MUSCLES } },
               exercises: { type: 'array', items: exerciseSchema },
               week: nullable({ type: 'integer', enum: [1, 2], description: 'Alternating weeks: 1 = week A, 2 = week B. Null when every week is the same.' }),
+              weekdays: nullable({
+                type: 'array',
+                items: { type: 'integer', enum: [0, 1, 2, 3, 4, 5, 6] },
+                description: 'Weekdays this day is trained on: 0 = Monday … 6 = Sunday. Null for no fixed days.',
+              }),
             },
           },
         },
       },
-    }),
+    }
+
+/** JSON schema for structured output: every reply has this shape. */
+export const COACH_REPLY_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['message', 'newPlan', 'changes', 'goalPlan'],
+  properties: {
+    message: { type: 'string', description: 'What you say to the user. Plain text, short.' },
+    newPlan: nullable(planSchema),
     changes: nullable({
       type: 'array',
       items: {
@@ -166,6 +197,39 @@ export const COACH_REPLY_SCHEMA = {
           week: nullable({ type: 'integer', enum: [1, 2], description: 'For add_day and set_day_week: 1 = week A, 2 = week B; null = every week.' }),
           reason: { type: 'string', description: 'Why, in a few words, shown next to the change.' },
         },
+      },
+    }),
+    goalPlan: nullable({
+      type: 'object',
+      additionalProperties: false,
+      required: ['phases', 'nutrition'],
+      properties: {
+        phases: {
+          type: 'array',
+          description: 'Back to back, from today to the goal date, in order.',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['name', 'startsOn', 'endsOn', 'focus', 'plan'],
+            properties: {
+              name: { type: 'string', description: 'Short, e.g. "Build", "Lean out", "Taper".' },
+              startsOn: { type: 'string', format: 'date' },
+              endsOn: { type: 'string', format: 'date', description: 'Inclusive.' },
+              focus: { type: 'string', description: 'One line: what this phase is for.' },
+              plan: planSchema,
+            },
+          },
+        },
+        nutrition: nullable({
+          type: 'object',
+          additionalProperties: false,
+          required: ['calories', 'proteinG', 'note'],
+          properties: {
+            calories: { type: 'integer', description: 'Daily calories.' },
+            proteinG: { type: 'integer', description: 'Daily protein in grams.' },
+            note: { type: 'string', description: 'One or two plain sentences on how to use the targets.' },
+          },
+        }),
       },
     }),
   },

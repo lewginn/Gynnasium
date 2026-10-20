@@ -7,10 +7,13 @@ import { detectPRs } from '../lib/prs'
 import { inferFocusMuscles } from '../lib/suggest'
 import { totalVolumeKg } from '../lib/summary'
 import { dayLabel, sortDays } from '../lib/weeks'
+import type { GoalData } from '../lib/goals'
+import type { PlanWithDays } from '../lib/schedule'
 import type { PlanTemplate } from '../lib/templates'
 import type {
   BodyMetric,
   BodyMetricType,
+  Goal,
   Exercise,
   LoggingType,
   Plan,
@@ -748,16 +751,37 @@ export async function volumeSinceKg(since: number): Promise<number> {
 // ---------------------------------------------------------------- Coach
 
 /** Creates a plan from one Claude proposed (already checked against the library). */
-export async function createPlanFromProposal(proposal: ProposedPlan): Promise<string> {
+/** Creates a plan from one Claude proposed (already checked against the library); as a goal phase when `phase` is given. */
+export async function createPlanFromProposal(
+  proposal: ProposedPlan,
+  phase?: { goalId: string; startsOn: string; endsOn: string },
+): Promise<string> {
   const library = await loadExercises(proposal.days.flatMap((d) => d.exercises.map((e) => e.exerciseId)))
   const planId = uuid()
   const t = now()
   await db.transaction('rw', db.plans, db.planDays, db.planExercises, async () => {
     const hasActive = (await db.plans.toArray()).some((p) => alive(p) && p.isActive)
-    await db.plans.add({ id: planId, name: proposal.name, goal: proposal.goal || undefined, isActive: !hasActive, createdBy: 'ai', updatedAt: t })
+    await db.plans.add({
+      id: planId,
+      name: proposal.name,
+      goal: proposal.goal || undefined,
+      isActive: !phase && !hasActive,
+      createdBy: 'ai',
+      ...(phase ?? {}),
+      updatedAt: t,
+    })
     for (const [dayOrder, day] of proposal.days.entries()) {
       const dayId = uuid()
-      await db.planDays.add({ id: dayId, planId, name: day.name, order: dayOrder, focusMuscles: day.focusMuscles, ...(day.week ? { week: day.week } : {}), updatedAt: t })
+      await db.planDays.add({
+        id: dayId,
+        planId,
+        name: day.name,
+        order: dayOrder,
+        focusMuscles: day.focusMuscles,
+        ...(day.week ? { week: day.week } : {}),
+        ...(day.weekdays?.length ? { weekdays: [...new Set(day.weekdays)].sort() } : {}),
+        updatedAt: t,
+      })
       await db.planExercises.bulkAdd(
         day.exercises
           .filter((e) => library.has(e.exerciseId))
@@ -909,4 +933,131 @@ export async function coachTrainingSummary(excludePlanId?: string, weeks = 6): P
   const weight = (await bodyMetrics('bodyweight'))[0]
   const otherPlans = (await db.plans.toArray()).filter((p) => alive(p) && p.id !== excludePlanId).map((p) => p.name)
   return { workouts: sessions.length, weeks, bodyweightKg: weight && { value: weight.value, date: weight.date }, lifts, otherPlans }
+}
+
+// ---------------------------------------------------------------- Calendar
+
+/** Every plan with its days in order: what the calendar works from. */
+export async function plansWithDays(): Promise<PlanWithDays[]> {
+  const plans = (await db.plans.toArray()).filter(alive)
+  const days = (await db.planDays.toArray()).filter(alive)
+  return plans.map((plan) => ({ plan, days: sortDays(days.filter((d) => d.planId === plan.id)) }))
+}
+
+/** Days off by date, with their notes. */
+export async function daysOff(): Promise<Map<string, string | undefined>> {
+  return new Map((await db.daysOff.toArray()).filter(alive).map((d) => [d.date, d.note]))
+}
+
+/** Marks a date as a day off, or clears it. */
+export async function setDayOff(date: string, off: boolean, note?: string) {
+  await db.transaction('rw', db.daysOff, async () => {
+    const existing = (await db.daysOff.where('date').equals(date).toArray()).filter(alive)
+    const t = now()
+    if (!off) return Promise.all(existing.map((d) => db.daysOff.update(d.id, { deletedAt: t, updatedAt: t })))
+    if (existing[0]) return db.daysOff.update(existing[0].id, { note: note?.trim() || undefined, updatedAt: t })
+    return db.daysOff.add({ id: uuid(), date, note: note?.trim() || undefined, updatedAt: t })
+  })
+}
+
+/**
+ * Puts a plan day on a weekday (or clears that weekday when dayId is null). A weekday holds one day per
+ * week group, so whatever was on it in that week (A, B, or every week) comes off.
+ */
+export async function assignWeekday(planId: string, weekday: number, dayId: string | null, week?: 1 | 2) {
+  await db.transaction('rw', db.planDays, async () => {
+    const t = now()
+    const days = (await db.planDays.where('planId').equals(planId).toArray()).filter(alive)
+    for (const d of days) {
+      if ((d.week ?? undefined) !== week) continue
+      const has = d.weekdays?.includes(weekday) ?? false
+      const wants = d.id === dayId
+      if (has === wants) continue
+      const weekdays = wants ? [...(d.weekdays ?? []), weekday].sort() : (d.weekdays ?? []).filter((w) => w !== weekday)
+      await db.planDays.update(d.id, { weekdays, updatedAt: t })
+    }
+  })
+}
+
+/** Finished workouts by local date, for marking the calendar. */
+export async function workoutsByDate(): Promise<Map<string, WorkoutSession[]>> {
+  const out = new Map<string, WorkoutSession[]>()
+  for (const s of (await db.sessions.toArray()).filter((s) => alive(s) && !!s.endedAt)) {
+    const key = toDateKey(s.startedAt)
+    out.set(key, [...(out.get(key) ?? []), s])
+  }
+  return out
+}
+
+// ---------------------------------------------------------------- Goals
+
+export async function activeGoal(): Promise<Goal | null> {
+  return (await db.goals.toArray()).find((g) => alive(g) && g.isActive) ?? null
+}
+
+export type GoalFields = Pick<Goal, 'name' | 'description' | 'targetDate' | 'targets' | 'calories' | 'proteinG' | 'nutritionNote'>
+
+/** Creates a goal (it becomes the active one) or updates one. */
+export async function saveGoal(fields: GoalFields, id?: string): Promise<string> {
+  const t = now()
+  const goalId = id ?? uuid()
+  await db.transaction('rw', db.goals, async () => {
+    if (id) return db.goals.update(id, { ...fields, updatedAt: t })
+    for (const g of (await db.goals.toArray()).filter((g) => alive(g) && g.isActive)) await db.goals.update(g.id, { isActive: false, updatedAt: t })
+    await db.goals.add({ id: goalId, ...fields, startsOn: toDateKey(t), isActive: true, updatedAt: t })
+  })
+  return goalId
+}
+
+/** Deletes a goal. Its phase plans are kept as ordinary plans (no longer tied to dates). */
+export async function deleteGoal(id: string) {
+  await db.transaction('rw', db.goals, db.plans, async () => {
+    const t = now()
+    await db.goals.update(id, { deletedAt: t, isActive: false, updatedAt: t })
+    for (const p of (await db.plans.toArray()).filter((p) => alive(p) && p.goalId === id))
+      await db.plans.update(p.id, { goalId: undefined, startsOn: undefined, endsOn: undefined, updatedAt: t })
+  })
+}
+
+/** A goal's phases, in date order. */
+export async function goalPhases(goalId: string): Promise<Plan[]> {
+  return (await db.plans.toArray()).filter((p) => alive(p) && p.goalId === goalId).sort((a, b) => (a.startsOn ?? '').localeCompare(b.startsOn ?? ''))
+}
+
+/** What goal progress is measured from: body metrics and, for lift targets, best est. 1RM per workout. */
+export async function goalData(goal: Goal): Promise<GoalData> {
+  const metrics = (await db.bodyMetrics.toArray()).filter(alive)
+  const lifts = new Map<string, { date: string; e1rm: number }[]>()
+  const ids = goal.targets.flatMap((t) => (t.kind === 'lift' ? [t.exerciseId] : []))
+  for (const id of ids) lifts.set(id, (await exerciseTrend(id)).map((p) => ({ date: toDateKey(p.x), e1rm: p.y })))
+  const names = new Map([...(await loadExercises(ids)).values()].map((e) => [e.id, e.name]))
+  return { metrics, lifts, names }
+}
+
+/**
+ * Makes the goal phase covering today the active plan, so Today, workouts and the coach all use it.
+ * Runs when Today opens; does nothing when there's no phase today or it's already active.
+ */
+export async function syncActivePhase(today: string = toDateKey(now())) {
+  const goal = await activeGoal()
+  if (!goal) return
+  const phase = (await goalPhases(goal.id)).find((p) => p.startsOn! <= today && today <= p.endsOn!)
+  if (phase && !phase.isActive) await setActivePlan(phase.id)
+}
+
+/**
+ * Replaces a goal's phases with the ones Claude proposed (already checked), and saves its nutrition targets.
+ * Old phases are deleted (soft), like any plan.
+ */
+export async function applyGoalPlan(
+  goalId: string,
+  phases: { plan: ProposedPlan; startsOn: string; endsOn: string }[],
+  nutrition: Pick<Goal, 'calories' | 'proteinG' | 'nutritionNote'> | null,
+): Promise<string[]> {
+  for (const old of await goalPhases(goalId)) await deletePlan(old.id)
+  const ids: string[] = []
+  for (const p of phases) ids.push(await createPlanFromProposal(p.plan, { goalId, startsOn: p.startsOn, endsOn: p.endsOn }))
+  if (nutrition) await db.goals.update(goalId, { ...nutrition, updatedAt: now() })
+  await syncActivePhase()
+  return ids
 }

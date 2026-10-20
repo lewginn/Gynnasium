@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronLeft, ChevronUp, MessagesSquare, Pencil, Play, Plus, Sparkles, Trash2, TriangleAlert } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronUp, MessagesSquare, Pencil, Play, Plus, Sparkles, Trash2, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ExercisePicker from '../components/ExercisePicker'
@@ -9,6 +9,7 @@ import { db } from '../db/db'
 import {
   addPlanDay,
   addPlanExercise,
+  assignWeekday,
   deletePlan,
   deletePlanDay,
   deletePlanExercise,
@@ -27,6 +28,7 @@ import { formatRest, formatTarget } from '../lib/format'
 import { MUSCLE_LABELS } from '../lib/labels'
 import { KEY_MUSCLES, suggestExercises, weeklySetsByMuscle } from '../lib/suggest'
 import type { Exercise, Muscle, PlanDay, PlanExercise } from '../lib/types'
+import { WEEKDAY_NAMES } from '../lib/schedule'
 import { alternates, dayLabel, weekLetter } from '../lib/weeks'
 import { useConfirm } from '../state/confirm'
 
@@ -144,6 +146,8 @@ export default function PlanEditPage() {
       )}
 
       {days.some((d) => d.exercises.length > 0) && <WeeklyVolume days={days} />}
+
+      {days.length > 0 && <WeeklySchedule planId={plan.id} days={days.map((d) => d.day)} alternating={alternating} />}
 
       <section className="card">
         <label className="toggle">
@@ -504,5 +508,55 @@ function FocusSheet({ selected: initial, onClose, onChange }: { selected: Muscle
         Done
       </button>
     </Sheet>
+  )
+}
+
+/** Which plan day is trained on each weekday. All on Rest keeps the up-next rotation instead. */
+function WeeklySchedule({ planId, days, alternating }: { planId: string; days: PlanDay[]; alternating: boolean }) {
+  const groups = alternating ? ([1, 2] as const) : [undefined]
+  return (
+    <section className="card" aria-labelledby="schedule-heading">
+      <div className="title-row">
+        <h2 id="schedule-heading">Weekly schedule</h2>
+        <Link to="/calendar" className="btn btn-sm btn-plain">
+          <CalendarDays size={16} aria-hidden /> Calendar
+        </Link>
+      </div>
+      <p className="muted small">Pick what you train on each day. Leave every day on Rest to just do the next day in order.</p>
+      {groups.map((week) => {
+        const options = days.filter((d) => (d.week ?? undefined) === week)
+        return (
+          <div key={week ?? 0}>
+            {week && <h3 className="section-label">Week {weekLetter(week)}</h3>}
+            <ul className="schedule-list">
+              {WEEKDAY_NAMES.map((name, weekday) => {
+                const current = options.find((d) => d.weekdays?.includes(weekday))
+                const label = week ? `${name}, week ${weekLetter(week)}` : name
+                return (
+                  <li key={name}>
+                    <label className="schedule-row">
+                      <span>{name}</span>
+                      <select
+                        className="input"
+                        aria-label={label}
+                        value={current?.id ?? ''}
+                        onChange={(e) => assignWeekday(planId, weekday, e.target.value || null, week)}
+                      >
+                        <option value="">Rest</option>
+                        {options.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )
+      })}
+    </section>
   )
 }

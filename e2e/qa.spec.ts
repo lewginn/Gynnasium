@@ -352,6 +352,7 @@ test.describe('plan editing', () => {
 test.describe('accessibility and ergonomics', () => {
   for (const colorScheme of ['light', 'dark'] as const)
     test(`no serious accessibility problems on the main screens (${colorScheme})`, async ({ page }) => {
+      test.setTimeout(60_000) // scans every main screen
       await page.emulateMedia({ colorScheme })
       await axeMainScreens(page)
     })

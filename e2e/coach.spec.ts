@@ -11,14 +11,16 @@ interface Call {
   auth: string | null
 }
 
-async function mockCoach(page: Page, replies: (CoachReply | { status: number; error: string })[]) {
+type Reply = Omit<CoachReply, 'goalPlan'> & Partial<Pick<CoachReply, 'goalPlan'>>
+
+export async function mockCoach(page: Page, replies: (Reply | { status: number; error: string })[]) {
   const calls: Call[] = []
   await page.route('**/api/coach', async (route: Route) => {
     calls.push({ body: route.request().postDataJSON(), auth: route.request().headers()['authorization'] ?? null })
     const next = replies.shift()
     if (!next) return route.fulfill({ status: 500, json: { error: 'No more replies' } })
     if ('error' in next) return route.fulfill({ status: next.status, json: { error: next.error } })
-    return route.fulfill({ status: 200, json: next })
+    return route.fulfill({ status: 200, json: { goalPlan: null, ...next } })
   })
   return calls
 }
@@ -51,6 +53,7 @@ test('build a plan with Claude: preview, then create', async ({ page }) => {
           {
             name: 'Day A',
             week: null,
+            weekdays: null,
             focusMuscles: ['quads', 'chest', 'lats'],
             exercises: [
               { exerciseId: 'Barbell_Squat', sets: 4, repMin: 6, repMax: 8, restSec: 180 },
@@ -58,7 +61,7 @@ test('build a plan with Claude: preview, then create', async ({ page }) => {
               { exerciseId: 'Not_A_Real_Exercise', sets: 3, repMin: 8, repMax: 12, restSec: 90 },
             ],
           },
-          { name: 'Day B', week: null, focusMuscles: ['hamstrings'], exercises: [{ exerciseId: 'Romanian_Deadlift', sets: 3, repMin: 8, repMax: 10, restSec: 150 }] },
+          { name: 'Day B', week: null, weekdays: null, focusMuscles: ['hamstrings'], exercises: [{ exerciseId: 'Romanian_Deadlift', sets: 3, repMin: 8, repMax: 10, restSec: 150 }] },
         ],
       },
     },

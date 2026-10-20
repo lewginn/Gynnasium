@@ -73,6 +73,10 @@ export interface Plan extends Synced {
   goal?: string
   isActive: boolean
   createdBy: 'manual' | 'ai'
+  /** A phase of a goal: the plan runs from startsOn to endsOn (YYYY-MM-DD, inclusive) and is used on those dates. */
+  goalId?: string
+  startsOn?: string
+  endsOn?: string
 }
 
 export interface PlanDay extends Synced {
@@ -82,6 +86,8 @@ export interface PlanDay extends Synced {
   focusMuscles: Muscle[]
   /** Alternating weeks: 1 = week A, 2 = week B. Unset when every week is the same. */
   week?: 1 | 2
+  /** The weekdays this day is trained on: 0 = Monday … 6 = Sunday. Empty or unset: no fixed day. */
+  weekdays?: number[]
 }
 
 export interface PlanExercise extends Synced {
@@ -144,6 +150,32 @@ export interface BodyMetric extends Synced {
   value: number
   date: string
   source: 'manual' | 'garmin' | 'health'
+}
+
+/** What a goal aims for. Weights in kg, body fat in %, measurements in cm; a lift target is an est. 1RM. */
+export type GoalTarget =
+  | { kind: 'bodyweight'; value: number }
+  | { kind: 'measurement'; metric: Exclude<BodyMetricType, 'bodyweight'>; value: number }
+  | { kind: 'lift'; exerciseId: string; value: number }
+
+/** Something to train towards by a date, like a holiday. One goal is active at a time. */
+export interface Goal extends Synced {
+  name: string
+  description?: string
+  /** When the goal was set: progress is measured from here. YYYY-MM-DD. */
+  startsOn: string
+  targetDate: string
+  targets: GoalTarget[]
+  calories?: number
+  proteinG?: number
+  nutritionNote?: string
+  isActive: boolean
+}
+
+/** A date you can't train (travel, a busy day): scheduled workouts skip it and the coach plans around it. */
+export interface DayOff extends Synced {
+  date: string
+  note?: string
 }
 
 export interface Settings {
