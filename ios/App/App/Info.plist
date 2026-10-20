@@ -66,5 +66,8 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- The app has one dark theme: keep the status bar text light and system UI dark, whatever the phone's setting. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
 </dict>
 </plist>
