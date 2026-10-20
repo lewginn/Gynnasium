@@ -1,7 +1,9 @@
+import { SYNCED_TABLES } from './mapping'
 import { db, type GymDB } from '../db/db'
 
 /** Tables holding a user's own data (everything synced). The exercise library is shared and never cleared. */
-const USER_TABLES = ['plans', 'planDays', 'planExercises', 'sessions', 'sessionExercises', 'setLogs', 'bodyMetrics'] as const
+/** Every synced table belongs to the account (derived, so a new table can't be missed). */
+const USER_TABLES = SYNCED_TABLES.map((t) => t.local)
 /** Device-level keys that survive an account switch. */
 const DEVICE_KEYS = new Set(['libraryVersion'])
 

@@ -2,11 +2,13 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ChartLine, Dumbbell, House, ListChecks, Settings } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
 import WorkoutBar from './components/WorkoutBar'
+import CalendarPage from './pages/CalendarPage'
 import CoachPage from './pages/CoachPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import EditSessionPage from './pages/EditSessionPage'
 import ExercisesPage from './pages/ExercisesPage'
 import FriendsPage from './pages/FriendsPage'
+import GoalPage from './pages/GoalPage'
 import PlanEditPage from './pages/PlanEditPage'
 import PlansPage from './pages/PlansPage'
 import ProgressPage from './pages/ProgressPage'
@@ -48,6 +50,9 @@ export default function App() {
           <Route path="/exercises" element={<ExercisesPage />} />
           <Route path="/exercises/:id" element={<ExerciseDetailPage />} />
           <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/goal" element={<GoalPage />} />
+          <Route path="/goal/coach" element={<CoachPage goal />} />
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

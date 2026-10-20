@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkChanges, checkNewPlan, describeChange, planRefs, planText, sanitiseTarget, trainingText, type CoachPlan } from './coach'
+import { checkChanges, checkGoalPlan, goalText, checkNewPlan, describeChange, planRefs, planText, sanitiseTarget, trainingText, type CoachPlan } from './coach'
 import type { PlanChange } from './coachSchema'
 import type { Exercise, PlanExercise } from './types'
 
@@ -49,6 +49,7 @@ const change = (c: Partial<PlanChange> & Pick<PlanChange, 'op'>): PlanChange => 
   restSec: null,
   position: null,
   exercises: null,
+  week: null,
   reason: '',
   ...c,
 })
@@ -97,8 +98,8 @@ describe('checkNewPlan', () => {
         name: ' Strength ',
         goal: 'Get strong',
         days: [
-          { name: 'A', focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }, { exerciseId: 'Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
-          { name: 'B', focusMuscles: [], exercises: [{ exerciseId: 'Also_Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
+          { name: 'A', week: null, weekdays: null, focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }, { exerciseId: 'Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
+          { name: 'B', week: null, weekdays: null, focusMuscles: [], exercises: [{ exerciseId: 'Also_Made_Up', sets: 3, repMin: 8, repMax: 12, restSec: 90 }] },
         ],
       },
       library,
@@ -177,5 +178,82 @@ describe('describeChange', () => {
       { kind: 'edit', title: 'Barbell Squat', detail: '3 → 5 sets · 8–12 → 5 reps' },
       { kind: 'add', title: 'Plank', detail: 'Add to Core: 3 × 30–45 s, rest 1 min' },
     ])
+  })
+})
+
+describe('weeks', () => {
+  it('tags days with their week in the context, and checks week changes', () => {
+    const weekly: CoachPlan = { ...detail, days: [{ ...detail.days[0], day: { ...detail.days[0].day, week: 2 } }, detail.days[1]] }
+    expect(planText(weekly)).toContain('d1 Legs [week B] (focus: quads)')
+    const { changes } = checkChanges(
+      [
+        { ...change({ op: 'set_day_week', day: 'd2' }), week: 1 },
+        { ...change({ op: 'add_day', name: 'Arms', exercises: [] }), week: 2 },
+        { ...change({ op: 'set_day_week', day: 'd1' }), week: 7 as 1 },
+      ],
+      weekly,
+      library,
+    )
+    expect(changes).toMatchObject([
+      { op: 'set_day_week', dayId: 'day-b', week: 1 },
+      { op: 'add_day', name: 'Arms', week: 2 },
+      { op: 'set_day_week', dayId: 'day-a', week: null },
+    ])
+    expect(describeChange(changes[0], weekly)).toMatchObject({ title: 'Core', detail: 'Move to week A' })
+    expect(checkNewPlan({ name: 'P', goal: '', days: [{ name: 'A', week: 2, weekdays: null, focusMuscles: [], exercises: [{ exerciseId: 'Plank', sets: 3, repMin: 30, repMax: 60, restSec: 60 }] }] }, library).plan.days[0].week).toBe(2)
+  })
+})
+
+describe('planning to a goal', () => {
+  const goal = { id: 'g', name: 'Ibiza', startsOn: '2026-10-01', targetDate: '2026-12-31', targets: [], isActive: true, updatedAt: 0, description: 'Look lean' }
+  const plan = (name: string, exerciseId = 'Barbell_Squat') => ({
+    name,
+    goal: '',
+    days: [{ name: 'Full body', week: null, weekdays: [0, 3], focusMuscles: [], exercises: [{ exerciseId, sets: 3, repMin: 5, repMax: 8, restSec: 150 }] }],
+  })
+
+  it('describes the goal, targets and days off for the coach', () => {
+    const text = goalText(
+      goal,
+      [{ label: 'Bodyweight', unit: 'weight', start: 85, current: 84, target: 78, direction: 'down', done: false, fraction: 0.1, perWeek: -0.6 }],
+      [],
+      ['2026-12-25', '2027-01-02'],
+      '2026-10-20',
+      'kg',
+    )
+    expect(text).toContain('Today: 2026-10-20 (Tuesday)')
+    expect(text).toContain('"Ibiza" on 2026-12-31: 72 days (10 weeks) away.')
+    expect(text).toContain('Bodyweight: now 84kg, target 78kg, started at 85kg')
+    expect(text).toContain('Days off (no training): 2026-12-25')
+    expect(text).not.toContain('2027-01-02')
+  })
+
+  it('keeps phases inside today…goal date, in order, without overlaps', () => {
+    const { phases, nutrition, skipped } = checkGoalPlan(
+      {
+        phases: [
+          { name: 'Lean out', startsOn: '2026-11-25', endsOn: '2027-01-10', focus: 'Cut', plan: plan('Lean out') },
+          { name: 'Build', startsOn: '2026-10-01', endsOn: '2026-11-30', focus: 'Strength', plan: plan('Build') },
+          { name: 'Ghost', startsOn: '2027-02-01', endsOn: '2027-03-01', focus: '', plan: plan('Ghost') },
+          { name: 'Bad', startsOn: 'soon', endsOn: '2026-12-01', focus: '', plan: plan('Bad') },
+          { name: 'Nothing usable', startsOn: '2026-12-31', endsOn: '2026-12-31', focus: '', plan: plan('X', 'Not_Real') },
+        ],
+        nutrition: { calories: 2300, proteinG: 160, note: ' Eat well ' },
+      },
+      goal,
+      library,
+      '2026-10-20',
+    )
+    expect(phases.map((p) => [p.name, p.startsOn, p.endsOn])).toEqual([
+      ['Build', '2026-10-20', '2026-11-30'], // can't start in the past
+      ['Lean out', '2026-12-01', '2026-12-31'], // after Build, and ends on the goal date
+    ])
+    expect(phases[0].plan.days[0].weekdays).toEqual([0, 3])
+    expect(nutrition).toEqual({ calories: 2300, proteinG: 160, note: 'Eat well' })
+    expect(skipped.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('drops nutrition targets outside a sensible range', () => {
+    expect(checkGoalPlan({ phases: [], nutrition: { calories: 600, proteinG: 100, note: '' } }, goal, library, '2026-10-20').nutrition).toBeNull()
   })
 })

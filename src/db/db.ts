@@ -1,7 +1,9 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type {
   BodyMetric,
+  DayOff,
   Exercise,
+  Goal,
   Plan,
   PlanDay,
   PlanExercise,
@@ -28,6 +30,8 @@ export class GymDB extends Dexie {
   sessionExercises!: EntityTable<SessionExercise, 'id'>
   setLogs!: EntityTable<SetLog, 'id'>
   bodyMetrics!: EntityTable<BodyMetric, 'id'>
+  goals!: EntityTable<Goal, 'id'>
+  daysOff!: EntityTable<DayOff, 'id'>
   kv!: EntityTable<KeyValue, 'key'>
 
   constructor(name = 'gynnasium') {
@@ -42,6 +46,11 @@ export class GymDB extends Dexie {
       setLogs: 'id, sessionExerciseId, [exerciseId+completedAt], updatedAt',
       bodyMetrics: 'id, [type+date], updatedAt',
       kv: 'key',
+    })
+    // Goals and the calendar: new tables only, existing data is untouched.
+    this.version(2).stores({
+      goals: 'id, updatedAt',
+      daysOff: 'id, date, updatedAt',
     })
   }
 }

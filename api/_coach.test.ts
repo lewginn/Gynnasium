@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { CoachReply } from '../src/lib/coachSchema.js'
 import { MODEL, buildParams, catalogueText, handleCoach, parseRequest, type CoachDeps } from './coach.js'
 
-const reply: CoachReply = { message: 'Swapped the leg press for hack squats.', newPlan: null, changes: [] }
+const reply: CoachReply = { message: 'Swapped the leg press for hack squats.', newPlan: null, changes: [], goalPlan: null }
 
 function message(overrides: Partial<BetaMessage> = {}): BetaMessage {
   return {

@@ -9,6 +9,16 @@ import {
   addPlanExercise,
   addSessionExercise,
   addSet,
+  activeGoal,
+  applyGoalPlan,
+  assignWeekday,
+  daysOff,
+  deleteGoal,
+  goalPhases,
+  plansWithDays,
+  saveGoal,
+  setDayOff,
+  syncActivePhase,
   applyPlanChanges,
   coachTrainingSummary,
   completeSet,
@@ -29,6 +39,8 @@ import {
   saveSessionEdits,
   setLoggingOverride,
   setActivePlan,
+  setAlternatingWeeks,
+  updatePlanDay,
   startSession,
   swapSessionExercise,
   uncompleteSet,
@@ -99,12 +111,27 @@ describe('workouts', () => {
     expect(await startSession()).toBe(sessionId)
   })
 
-  it('pre-fills sets from last time', async () => {
-    await logWorkout('Barbell_Squat', [[100, 5], [100, 5], [105, 3]])
+  it('pre-fills sets from last time, aiming a rep higher (within the 6–10 default range)', async () => {
+    await logWorkout('Barbell_Squat', [[100, 5], [100, 7], [105, 3]])
     const sessionId = await startSession()
     await addSessionExercise(sessionId, await exercise('Barbell_Squat'))
     const sets = (await loadSession(sessionId))!.exercises[0].sets
-    expect(sets.map((s) => [s.weightKg, s.reps])).toEqual([[100, 5], [100, 5], [105, 3]])
+    expect(sets.map((s) => [s.weightKg, s.reps])).toEqual([[100, 6], [100, 8], [105, 6]])
+  })
+
+  it('progresses a plan exercise: more weight once every set hits the top of its range', async () => {
+    const planId = await createPlan('P')
+    const dayId = await addPlanDay(planId, 'Legs')
+    const peId = await addPlanExercise(dayId, await exercise('Barbell_Squat'))
+    await db.planExercises.update(peId, { targetSets: 2, repMin: 5, repMax: 8 })
+    const s1 = await startSession(dayId)
+    for (const set of (await loadSession(s1))!.exercises[0].sets) {
+      await updateSet(set.id, { weightKg: 100, reps: 8 })
+      await completeSet(set.id)
+    }
+    await finishSession(s1)
+    const s2 = await startSession(dayId)
+    expect((await loadSession(s2))!.exercises[0].sets.map((s) => [s.weightKg, s.reps])).toEqual([[105, 5], [105, 5]])
   })
 
   it('detects PRs against earlier workouts only', async () => {
@@ -299,6 +326,7 @@ describe('coach', () => {
     restSec: null,
     position: null,
     exercises: null,
+    week: null,
     reason: '',
     ...c,
   })
@@ -317,7 +345,7 @@ describe('coach', () => {
     const id = await createPlanFromProposal({
       name: 'Strength',
       goal: 'Get stronger on the big lifts',
-      days: [{ name: 'A', focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }] }],
+      days: [{ name: 'A', week: null, weekdays: null, focusMuscles: ['quads'], exercises: [{ exerciseId: 'Barbell_Squat', sets: 5, repMin: 5, repMax: 5, restSec: 180 }] }],
     })
     const plan = (await loadPlan(id))!
     expect(plan.plan).toMatchObject({ name: 'Strength', goal: 'Get stronger on the big lifts', createdBy: 'ai', isActive: true })
@@ -370,5 +398,131 @@ describe('coach', () => {
     expect(summary.otherPlans).toEqual(['Other plan'])
     expect(summary.lifts[0]).toMatchObject({ weightKg: 100, reps: 5 })
     expect(summary.lifts[0].exercise.id).toBe('Barbell_Squat')
+  })
+})
+
+const change = (c: Partial<PlanChange> & Pick<PlanChange, 'op'>): PlanChange => ({
+  day: null,
+  exercise: null,
+  exerciseId: null,
+  name: null,
+  sets: null,
+  repMin: null,
+  repMax: null,
+  restSec: null,
+  position: null,
+  exercises: null,
+  week: null,
+  reason: '',
+  ...c,
+})
+
+async function apply(planId: string, changes: PlanChange[]) {
+  const detail = (await loadPlan(planId))!
+  const library = await loadExercises(changes.flatMap((c) => [c.exerciseId ?? '', ...(c.exercises ?? []).map((e) => e.exerciseId)]))
+  const checked = checkChanges(changes, detail, library)
+  expect(checked.skipped).toEqual([])
+  await applyPlanChanges(planId, checked.changes)
+  return (await loadPlan(planId))!
+}
+
+describe('alternating weeks', () => {
+  it('turning it on puts every day in week A; days sort A then B; workouts are named with their week', async () => {
+    const planId = await createPlanFromTemplate(PLAN_TEMPLATES[0]) // Push, Pull, Legs
+    await setAlternatingWeeks(planId, true)
+    let plan = (await loadPlan(planId))!
+    expect(plan.days.map((d) => d.day.week)).toEqual([1, 1, 1])
+    await updatePlanDay(plan.days[0].day.id, { week: 2 }) // Push to week B
+    await addPlanDay(planId, 'Arms', 1)
+    plan = (await loadPlan(planId))!
+    expect(plan.days.map((d) => d.day.name)).toEqual(['Pull', 'Legs', 'Arms', 'Push'])
+    const sessionId = await startSession(plan.days[3].day.id)
+    expect((await db.sessions.get(sessionId))!.name).toBe('Push · Week B')
+
+    await setAlternatingWeeks(planId, false)
+    expect((await loadPlan(planId))!.days.every((d) => d.day.week === undefined)).toBe(true)
+  })
+
+  it('the coach can create a plan with weeks, and move a day between weeks', async () => {
+    const id = await createPlanFromProposal({
+      name: 'A/B',
+      goal: '',
+      days: [
+        { name: 'Push', week: 1, weekdays: null, focusMuscles: [], exercises: [{ exerciseId: 'Barbell_Bench_Press_-_Medium_Grip', sets: 3, repMin: 5, repMax: 8, restSec: 150 }] },
+        { name: 'Push', week: 2, weekdays: null, focusMuscles: [], exercises: [{ exerciseId: 'Dumbbell_Bench_Press', sets: 3, repMin: 8, repMax: 12, restSec: 120 }] },
+      ],
+    })
+    expect((await loadPlan(id))!.days.map((d) => d.day.week)).toEqual([1, 2])
+    const after = await apply(id, [{ ...change({ op: 'set_day_week', day: 'd2' }), week: 1 }])
+    expect(after.days.map((d) => d.day.week)).toEqual([1, 1])
+  })
+})
+
+describe('calendar and goals', () => {
+  const goalFields = { name: 'Ibiza', targetDate: '2027-06-01', targets: [{ kind: 'bodyweight' as const, value: 78 }] }
+
+  it('toggles days off, keeping a note', async () => {
+    await setDayOff('2026-12-25', true, 'Christmas')
+    expect(await daysOff()).toEqual(new Map([['2026-12-25', 'Christmas']]))
+    await setDayOff('2026-12-25', false)
+    expect((await daysOff()).size).toBe(0)
+    expect(await db.daysOff.count()).toBe(1) // soft-deleted, so the change syncs
+  })
+
+  it('puts days on weekdays, one day per weekday', async () => {
+    const planId = await createPlanFromTemplate(PLAN_TEMPLATES[0]) // Push, Pull, Legs
+    const [push, pull] = (await loadPlan(planId))!.days.map((d) => d.day.id)
+    await assignWeekday(planId, 0, push)
+    await assignWeekday(planId, 3, push)
+    await assignWeekday(planId, 0, pull) // Monday moves from Push to Pull
+    const days = (await plansWithDays()).find((p) => p.plan.id === planId)!.days
+    expect(days.map((d) => [d.name, d.weekdays ?? []])).toEqual([
+      ['Push', [3]],
+      ['Pull', [0]],
+      ['Legs', []],
+    ])
+    await assignWeekday(planId, 0, null)
+    expect((await db.planDays.get(pull))!.weekdays).toEqual([])
+  })
+
+  it('one goal is active at a time; its phases take over on their dates; deleting it keeps the plans', async () => {
+    const first = await saveGoal(goalFields)
+    const goalId = await saveGoal({ ...goalFields, name: 'Wedding' })
+    expect((await db.goals.get(first))!.isActive).toBe(false)
+    expect((await activeGoal())!.name).toBe('Wedding')
+
+    const today = new Date().toISOString().slice(0, 10)
+    const day = (name: string) => ({
+      name,
+      week: null,
+      weekdays: [0, 3],
+      focusMuscles: [],
+      exercises: [{ exerciseId: 'Barbell_Squat', sets: 3, repMin: 5, repMax: 8, restSec: 150 }],
+    })
+    await applyGoalPlan(
+      goalId,
+      [
+        { plan: { name: 'Build', goal: '', days: [day('Full body')] }, startsOn: '2020-01-01', endsOn: '2099-01-01' },
+        { plan: { name: 'Peak', goal: '', days: [day('Full body')] }, startsOn: '2099-01-02', endsOn: '2099-02-01' },
+      ],
+      { calories: 2300, proteinG: 160, nutritionNote: 'High protein' },
+    )
+    const phases = await goalPhases(goalId)
+    expect(phases.map((p) => [p.name, p.startsOn, p.isActive])).toEqual([
+      ['Build', '2020-01-01', true], // covers today, so it became the active plan
+      ['Peak', '2099-01-02', false],
+    ])
+    expect((await db.planDays.where('planId').equals(phases[0].id).first())!.weekdays).toEqual([0, 3])
+    expect(await db.goals.get(goalId)).toMatchObject({ calories: 2300, proteinG: 160 })
+
+    // Re-planning replaces the phases.
+    await applyGoalPlan(goalId, [{ plan: { name: 'Again', goal: '', days: [day('A')] }, startsOn: today, endsOn: today }], null)
+    expect((await goalPhases(goalId)).map((p) => p.name)).toEqual(['Again'])
+    await syncActivePhase(today)
+
+    await deleteGoal(goalId)
+    const kept = (await db.plans.toArray()).find((p) => p.name === 'Again' && !p.deletedAt)!
+    expect(kept.goalId).toBeUndefined()
+    expect(kept.startsOn).toBeUndefined()
   })
 })

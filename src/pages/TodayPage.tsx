@@ -1,12 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, ChevronRight, Play, Plus, Trophy } from 'lucide-react'
-import { useState } from 'react'
+import { CalendarDays, Check, ChevronRight, Flag, Play, Plus, Trophy } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Sheet from '../components/Sheet'
 import { db } from '../db/db'
 import {
+  activeGoal,
   alive,
+  daysOff,
   finishedSessionStarts,
+  goalData,
+  goalPhases,
+  plansWithDays,
+  syncActivePhase,
+  workoutsByDate,
   getActiveSession,
   lastPerformance,
   loadPlan,
@@ -21,9 +28,12 @@ import { unlockAudio } from '../lib/feedback'
 import { formatClock, formatDay, formatDuration, formatRest, formatTarget } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
 import { bestSet, formatSet } from '../lib/summary'
-import type { SetLog } from '../lib/types'
+import type { Goal, Plan, SetLog } from '../lib/types'
 import { toDisplay } from '../lib/units'
 import { startOfWeek, weekStreak, weekSummary } from '../lib/week'
+import { dayLabel, daysPerWeek, nextDay, weekLetter } from '../lib/weeks'
+import { countdown, countdownText, formatAmount, formatPace, targetProgress, type TargetProgress } from '../lib/goals'
+import { dayPlan, nextWorkout, shortDate, todayKey } from '../lib/schedule'
 import { useNow } from '../state/restTimer'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -31,6 +41,8 @@ const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 const PR_FRESH_MS = 14 * 86400000
 /** How many of the next day's exercises the hero lists; the rest are a tap away. */
 const HERO_EXERCISES = 3
+
+type GoalInfo = { goal: Goal; phase: Plan | undefined; targets: TargetProgress[] }
 
 /** Launchpad: what to do next, how the week is going, and what you did recently. */
 export default function TodayPage() {
@@ -42,10 +54,28 @@ export default function TodayPage() {
     const sets = (await loadSession(session.id))?.exercises.flatMap((e) => e.sets) ?? []
     return { session, done: sets.filter((s) => s.completedAt).length, total: sets.length }
   })
+  const today = todayKey(useNow(60_000))
+  // A goal's phase takes over as the active plan on its start date.
+  useEffect(() => {
+    void syncActivePhase(today)
+  }, [today])
+  // With fixed weekdays, the calendar decides what's next; otherwise (null) the rotation does.
+  const schedule = useLiveQuery(async () => {
+    const plans = await plansWithDays()
+    const off = await daysOff()
+    const p = dayPlan(today, plans, off)
+    if (p.kind === 'rotation' || p.kind === 'none') return null
+    const doneToday = (await workoutsByDate()).get(today)?.some((s) => p.kind === 'workout' && s.planDayId === p.day.id)
+    if (p.kind === 'workout' && !doneToday) return { planId: p.plan.id, dayId: p.day.id, date: today, why: 'today' as const }
+    const n = nextWorkout(today, plans, off)
+    if (!n) return null
+    return { planId: n.plan.id, dayId: n.day.id, date: n.date, why: p.kind === 'workout' ? ('done' as const) : p.kind }
+  }, [today])
   const plan = useLiveQuery(async () => {
-    const p = (await db.plans.toArray()).find((x) => alive(x) && x.isActive)
-    return p ? await loadPlan(p.id) : null
-  })
+    if (schedule === undefined) return undefined
+    const id = schedule?.planId ?? (await db.plans.toArray()).find((x) => alive(x) && x.isActive)?.id
+    return id ? await loadPlan(id) : null
+  }, [schedule?.planId, schedule === undefined])
   const recent = useLiveQuery(() => recentSessions(5))
   const now = useNow(active ? 1000 : 60_000)
   const weekStart = startOfWeek(now)
@@ -54,14 +84,24 @@ export default function TodayPage() {
     return { starts, volumeKg: await volumeSinceKg(weekStart) }
   }, [weekStart])
   const latestPR = useLiveQuery(async () => (await recentPRSets(1))[0] ?? null)
+  const goal = useLiveQuery(async () => {
+    const goal = await activeGoal()
+    if (!goal) return null
+    const data = await goalData(goal)
+    const phase = (await goalPhases(goal.id)).find((p) => p.startsOn! <= today && today <= p.endsOn!)
+    return { goal, phase, targets: goal.targets.slice(0, 2).map((t) => targetProgress(t, goal, data, today)) }
+  }, [today])
   const [previewDayId, setPreviewDayId] = useState<string | null>(null)
   const preview = plan?.days.find((d) => d.day.id === previewDayId)
 
   // Suggest the day after the one you did last.
   const lastDayId = recent?.find((s) => s.planDayId && plan?.days.some((d) => d.day.id === s.planDayId))?.planDayId
-  const lastIndex = plan?.days.findIndex((d) => d.day.id === lastDayId) ?? -1
-  const next = plan && plan.days.length > 0 ? plan.days[(lastIndex + 1) % plan.days.length] : null
-  const otherDays = plan?.days.filter((d) => d !== next) ?? []
+  const next = !plan
+    ? null
+    : schedule
+      ? (plan.days.find((d) => d.day.id === schedule.dayId) ?? null)
+      : nextDay(plan.days.map((d) => ({ ...d, id: d.day.id })), lastDayId)
+  const otherDays = plan?.days.filter((d) => d.day.id !== next?.day.id) ?? []
 
   // Last time's best set for each exercise in the next day, so you know what you're aiming for.
   const nextExerciseIds = next?.exercises.map((e) => e.exercise.id).join() ?? ''
@@ -85,7 +125,7 @@ export default function TodayPage() {
   const freshPR = latestPR && now - latestPR.set.completedAt! < PR_FRESH_MS ? latestPR : null
   // Render the page in one go once everything has loaded: cards appearing one by one push the
   // Start buttons around, and a tap aimed at one lands on another.
-  const loaded = [active, plan, recent, week, latestPR].every((x) => x !== undefined)
+  const loaded = [active, schedule, plan, recent, week, latestPR, goal].every((x) => x !== undefined)
 
   return (
     <>
@@ -118,7 +158,14 @@ export default function TodayPage() {
 
           {!active && next && (
             <section className="card hero" aria-label="Up next">
-              <span className="eyebrow">Up next in {plan!.plan.name}</span>
+              <span className="eyebrow">
+                {!schedule
+                  ? `Up next in ${plan!.plan.name}`
+                  : schedule.why === 'today'
+                    ? `Today in ${plan!.plan.name}`
+                    : `${{ rest: 'Rest day', off: 'Day off', done: 'Done for today' }[schedule.why]} · next ${shortDate(schedule.date)}`}
+                {next.day.week && ` · Week ${weekLetter(next.day.week)}`}
+              </span>
               <h2 className="hero-title">{next.day.name}</h2>
               {next.exercises.length > 0 ? (
                 <ol className="hero-list">
@@ -178,11 +225,13 @@ export default function TodayPage() {
             <WeekCard
               starts={week.starts}
               now={now}
-              goal={plan?.days.length ?? 0}
+              goal={plan ? daysPerWeek(plan.days.map((d) => d.day)) : 0}
               volume={toDisplay(week.volumeKg, settings.units)}
               units={settings.units}
             />
           )}
+
+          {!active && goal && <GoalCard info={goal} today={today} />}
 
           {freshPR && (
             <Link to={`/exercises/${encodeURIComponent(freshPR.exercise.id)}`} className="card pr-row">
@@ -202,13 +251,14 @@ export default function TodayPage() {
               <ul className="day-list">
                 {otherDays.map(({ day, exercises }) => (
                   <li key={day.id} className="day-row">
-                    <button className="day-button" onClick={() => setPreviewDayId(day.id)} aria-label={`${day.name}: view exercises`}>
+                    <button className="day-button" onClick={() => setPreviewDayId(day.id)} aria-label={`${dayLabel(day)}: view exercises`}>
                       <span className="list-title">{day.name}</span>
                       <span className="list-meta">
+                        {day.week && `Week ${weekLetter(day.week)} · `}
                         {exercises.length === 0 ? 'No exercises yet' : `${exercises.length} exercises`}
                       </span>
                     </button>
-                    <button className="day-start" onClick={() => start(day.id)} disabled={exercises.length === 0} aria-label={`Start ${day.name}`}>
+                    <button className="day-start" onClick={() => start(day.id)} disabled={exercises.length === 0} aria-label={`Start ${dayLabel(day)}`}>
                       <Play size={20} aria-hidden />
                     </button>
                   </li>
@@ -281,7 +331,12 @@ function WeekCard({ starts, now, goal, volume, units }: { starts: number[]; now:
   const streak = weekStreak(starts, now)
   return (
     <section className="card week" aria-labelledby="week-title">
-      <h2 id="week-title">This week</h2>
+      <div className="title-row">
+        <h2 id="week-title">This week</h2>
+        <Link to="/calendar" className="btn btn-sm btn-plain week-calendar">
+          <CalendarDays size={16} aria-hidden /> Calendar
+        </Link>
+      </div>
       <ol className="week-strip">
         {WEEKDAYS.map((name, i) => (
           <li
@@ -322,5 +377,27 @@ function WeekCard({ starts, now, goal, volume, units }: { starts: number[]; now:
         </div>
       </dl>
     </section>
+  )
+}
+
+/** The active goal: countdown, the current phase, and how the first targets are going. */
+function GoalCard({ info, today }: { info: GoalInfo; today: string }) {
+  const settings = useSettings()
+  const { goal, phase, targets } = info
+  return (
+    <Link to="/goal" className="card goal-card" aria-label={`Goal: ${goal.name}`}>
+      <span className="eyebrow">
+        <Flag size={13} aria-hidden /> {countdownText(countdown(goal, today))}
+      </span>
+      <span className="list-title goal-card-title">{goal.name}</span>
+      {phase && <span className="list-meta">Phase: {phase.name}, until {shortDate(phase.endsOn!)}</span>}
+      {targets.map((t) => (
+        <span key={t.label} className="list-meta">
+          {t.label}: {t.current !== null ? formatAmount(t.current, t.unit, settings.units) : 'not logged yet'} →{' '}
+          {formatAmount(t.target, t.unit, settings.units)}
+          {t.done ? ' · reached' : formatPace(t, settings.units) ? ` · ${formatPace(t, settings.units)}` : ''}
+        </span>
+      ))}
+    </Link>
   )
 }
