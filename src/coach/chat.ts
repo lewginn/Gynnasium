@@ -25,3 +25,6 @@ export function forgetPlanChats(planId: string) {
   saveChat(planId, [])
   if (loadChat<{ planId?: string }>(undefined).some((e) => e.planId === planId)) saveChat(undefined, [])
 }
+
+/** A deleted goal takes its chat with it, so the next goal starts fresh. */
+export const forgetGoalChat = () => saveChat('goal', [])
