@@ -1,0 +1,9 @@
+{
+	"appId": "app.gynnasium",
+	"appName": "Gynnasium",
+	"webDir": "dist",
+	"ios": {
+		"contentInset": "never"
+	},
+	"packageClassList": []
+}
