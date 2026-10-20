@@ -1,67 +1,76 @@
 /*
- * Gynnasium lives on an iPhone (Safari, or added to the home screen), so it uses the platform's
- * language: semantic colours that follow light/dark, the iOS text sizes, grouped lists, sheets.
+ * Gynnasium lives on an iPhone (Safari, or added to the home screen). One dark theme, warm and
+ * quiet: near-black panels, champagne gold for anything you can act on, burnt orange (ember) for
+ * heat: PRs, warm-ups and the glow behind the page. iOS text sizes, grouped lists and sheets.
  * Everything below is built from the tokens in :root; don't hard-code colours, fonts or radii.
  */
 :root {
-  /* Accent: systemGreen. In light mode a shade darker than Apple's accessible variant (#248a3d), which
-     falls short of 4.5:1 on the gray fills; this one clears it on every background, fills included. */
-  /* Chart colours, validated (colour-blind separation, lightness band, contrast) against --cell in each theme. */
-  --chart-primary: #248a3d;
-  --chart-muted: #8e8e93; /* de-emphasis only: raw points behind a trend line, always with a legend */
-  --chart-grid: rgba(60, 60, 67, 0.14);
-  --tint: #1b7032;
-  --on-tint: #ffffff;
-  --tint-soft: rgba(52, 199, 89, 0.14);
-  --switch-on: #34c759;
+  /* Palette */
+  --gold: #e7ba80; /* primary: actions, links, selection, progress */
+  --ember: #d45d14; /* secondary: PRs, warm-ups, the ambient glow */
+  --ink: #f6f1ea; /* warm white */
 
-  --bg: #f2f2f7; /* systemGroupedBackground */
-  --cell: #ffffff; /* secondarySystemGroupedBackground */
-  --cell-pressed: #d1d1d6; /* systemGray4 */
-  --label: #000000;
-  /* secondaryLabel is 60% in iOS (about 3.4:1); 76% keeps the hierarchy and meets WCAG AA for small text. */
-  --label-2: rgba(60, 60, 67, 0.76);
-  --label-3: rgba(60, 60, 67, 0.3); /* tertiaryLabel */
-  --separator: rgba(60, 60, 67, 0.29);
-  --fill: rgba(120, 120, 128, 0.2); /* systemFill */
-  --fill-3: rgba(118, 118, 128, 0.12); /* tertiarySystemFill */
-  --segment-thumb: #ffffff;
+  --tint: var(--gold);
+  --on-tint: #1a1206;
+  --tint-soft: rgba(231, 186, 128, 0.14);
+  --tint-line: rgba(231, 186, 128, 0.55); /* outlines on secondary buttons and selected controls */
+  --switch-on: var(--gold);
 
-  --red: #ff3b30;
-  --red-text: #d70015; /* systemRed, accessible: legible as text on white */
-  --orange-text: #c93400;
-  /* systemYellow for personal records. Always with black text: it reads in light and dark. */
-  --pr: #ffcc00;
-  --pr-soft: rgba(255, 204, 0, 0.16);
+  --bg: #0d0d0d;
+  --cell: #171717;
+  --cell-pressed: #232323;
+  --sheet: #141414;
+  --border: rgba(255, 255, 255, 0.07); /* hairline around cards, so panels read on near-black */
+  --label: var(--ink);
+  --label-2: rgba(246, 241, 234, 0.6); /* 6.4:1 on cards */
+  --label-3: rgba(246, 241, 234, 0.34);
+  --separator: rgba(255, 255, 255, 0.09);
+  --fill: rgba(255, 255, 255, 0.14);
+  --fill-3: rgba(255, 255, 255, 0.07);
+  --segment-thumb: #2a2a2a;
 
-  /* Translucent material for floating bars, so content stays visible as it scrolls beneath. */
-  --glass: rgba(255, 255, 255, 0.72);
-  --glass-rim: rgba(255, 255, 255, 0.75);
-  --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --red: #ff5a4f;
+  --red-text: #ff7a6e;
+  --orange: var(--ember);
+  --orange-text: #f0884a;
+  /* PRs are ember with near-black text (white on ember is only 3.9:1). */
+  --pr: var(--ember);
+  --on-pr: #0d0d0d;
+  --pr-soft: rgba(212, 93, 20, 0.16);
+  --glow: rgba(212, 93, 20, 0.28);
 
-  /* Fixed colours: text on the PR yellow, and physical things (a switch knob, a photo's white backdrop). */
-  --on-pr: #000000;
+  /* Chart colours, validated against --cell (lightness band, CVD separation, contrast). The gold is
+     too light and grey for a data mark, so charts use a deeper amber from the same family. */
+  --chart-primary: #cf7f2e;
+  --chart-muted: #7d776f; /* de-emphasis only: raw points behind a trend line, always with a legend */
+  --chart-grid: rgba(255, 255, 255, 0.08);
+
+  /* Material for bars that sit over scrolling content. */
+  --glass: rgba(20, 20, 20, 0.94);
+  --glass-rim: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
+
   --knob: #ffffff;
-  --media-bg: #ffffff;
-  --orange: #ff9500;
-  --scrim: rgba(0, 0, 0, 0.35);
-  --shadow-raised: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04);
-  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.2);
+  --media-bg: #efeae2; /* exercise photos have white backgrounds; soften them */
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-float: 0 12px 40px rgba(0, 0, 0, 0.55);
 
   --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
-  /* Numbers: SF Pro Rounded where the system has it (iPhone, Mac), else the text face. */
-  --font-numeric: ui-rounded, 'SF Pro Rounded', var(--font-text);
+  /* Numbers in the text face with tabular figures: crisp, not rounded. */
+  --font-numeric: var(--font-text);
 
-  /* Three radii: controls; rows inside cards; cards and sheets. Capsules are only for buttons, chips and floating bars. */
+  /* Three radii: controls; rows inside cards; cards and sheets. Capsules are only for buttons, chips and bars. */
   --radius-s: 12px;
   --radius-m: 16px;
-  --radius-l: 22px;
+  --radius-l: 20px;
   --tap: 48px;
-  --tab-h: 62px;
-  --tab-gap: max(12px, env(safe-area-inset-bottom));
+  /* The tab bar is docked to the bottom edge; --tab-gap is the home-indicator area below it. */
+  --tab-h: 64px;
+  --tab-gap: env(safe-area-inset-bottom, 0px);
 
-  color-scheme: light dark;
+  color-scheme: dark;
   font-family: var(--font-text);
   font-size: 17px; /* Body */
   line-height: 22px;
@@ -70,40 +79,6 @@
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --chart-primary: #22a63f;
-    --chart-muted: #8e8e93;
-    --chart-grid: rgba(84, 84, 88, 0.45);
-    --tint: #30d158;
-    --on-tint: #000000;
-    --tint-soft: rgba(48, 209, 88, 0.16);
-    --switch-on: #30d158;
-
-    --bg: #000000;
-    --cell: #1c1c1e;
-    --cell-pressed: #3a3a3c;
-    --label: #ffffff;
-    --label-2: rgba(235, 235, 245, 0.6);
-    --label-3: rgba(235, 235, 245, 0.3);
-    --separator: rgba(84, 84, 88, 0.65);
-    --fill: rgba(120, 120, 128, 0.36);
-    --fill-3: rgba(118, 118, 128, 0.24);
-    --segment-thumb: #636366;
-
-    --red: #ff453a;
-    --red-text: #ff6961;
-    --orange-text: #ffb340;
-    --pr: #ffd60a;
-    --orange: #ff9f0a;
-    --pr-soft: rgba(255, 214, 10, 0.14);
-
-    --glass: rgba(36, 36, 40, 0.68);
-    --glass-rim: rgba(255, 255, 255, 0.14);
-    --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-  }
 }
 
 * {
@@ -115,6 +90,16 @@ body {
   background: var(--bg);
   overscroll-behavior-y: none;
 }
+/* The one decorative touch: a warm glow behind the top of the page, fixed so it doesn't scroll. */
+.app::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 420px;
+  background: radial-gradient(90% 100% at 50% 0%, var(--glow), transparent 70%);
+  pointer-events: none;
+}
 
 h1,
 h2,
@@ -124,8 +109,8 @@ h3 {
 h1 {
   font-size: 34px; /* Large Title */
   line-height: 41px;
-  font-weight: 700;
-  letter-spacing: 0.37px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
   overflow-wrap: anywhere;
 }
 h2 {
@@ -144,6 +129,12 @@ p {
 a {
   color: var(--tint);
 }
+/* Plain text links (not buttons, rows or cards). */
+a:not([class]) {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
 button {
   font: inherit;
   color: inherit;
@@ -156,7 +147,7 @@ svg {
   outline-offset: 2px;
 }
 
-/* Numbers in the rounded face, with tabular figures so they stay aligned as they change. */
+/* Numbers with tabular figures, so they stay aligned as they change. */
 .stat-value,
 .rest-time,
 .stepper-value input,
@@ -174,6 +165,8 @@ svg {
 /* ---------- Layout */
 
 .app {
+  position: relative;
+  isolation: isolate; /* keeps the glow (z-index -1) above the body background, below content */
   min-height: 100dvh;
 }
 
@@ -184,6 +177,10 @@ svg {
 }
 .app:has(.workout-bar) .content {
   padding-bottom: calc(var(--tab-h) + var(--tab-gap) + 88px);
+}
+/* The tab bar sits under the workout bar, so drop its own top rim there. */
+.app:has(.workout-bar) .bottom-nav {
+  border-top-color: transparent;
 }
 .content-workout {
   padding-top: 0;
@@ -283,6 +280,7 @@ svg {
   display: block;
   margin-bottom: 16px;
   padding: 16px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-l);
   background: var(--cell);
   color: var(--label);
@@ -330,7 +328,7 @@ svg {
 
 /* ---------- Buttons & inputs */
 
-/* Buttons. Default: tinted text on a gray fill; primary: filled with the tint. */
+/* Buttons. Default: outlined in gold; primary: filled gold with dark text. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -340,7 +338,8 @@ svg {
   padding: 0 20px;
   border: 0;
   border-radius: 999px;
-  background: var(--fill-3);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--tint-line);
   color: var(--tint);
   font-size: 17px;
   font-weight: 600;
@@ -354,11 +353,13 @@ svg {
 }
 .btn:disabled {
   background: var(--fill-3);
+  box-shadow: none;
   color: var(--label-3);
   cursor: not-allowed;
 }
 .btn-primary {
   background: var(--tint);
+  box-shadow: none;
   color: var(--on-tint);
 }
 .btn-sm {
@@ -372,14 +373,17 @@ svg {
   margin-bottom: 10px;
 }
 .btn-destructive {
+  box-shadow: inset 0 0 0 1px var(--red-text);
   color: var(--red-text);
 }
 .btn-danger-text {
   background: transparent;
+  box-shadow: none;
   color: var(--red-text);
 }
 .btn-plain {
   background: transparent;
+  box-shadow: none;
 }
 
 .icon-btn {
@@ -407,7 +411,7 @@ svg {
   width: 100%;
   min-height: 44px;
   padding: 0 14px;
-  border: 0;
+  border: 1px solid var(--border);
   border-radius: var(--radius-s);
   background: var(--fill-3);
   color: var(--label);
@@ -503,13 +507,14 @@ select.input {
   min-height: 36px;
 }
 .chip[aria-pressed='true'] {
-  background: var(--tint);
-  color: var(--on-tint);
+  background: var(--tint-soft);
+  box-shadow: inset 0 0 0 1px var(--tint);
+  color: var(--tint);
   font-weight: 600;
 }
 .chip-add {
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--separator);
+  box-shadow: inset 0 0 0 1px var(--tint-line);
   color: var(--tint);
 }
 .day-tabs {
@@ -557,11 +562,14 @@ select.input {
   transition: background-color 0.2s;
 }
 .segmented button[aria-checked='true'] {
+  color: var(--tint);
   font-weight: 600;
 }
 .segmented button[aria-checked='true']::before {
   background: var(--segment-thumb);
-  box-shadow: var(--shadow-raised);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 0 0 1px var(--tint-line);
 }
 
 /* A row with a switch. */
@@ -667,6 +675,7 @@ select.input {
   overflow: hidden;
   list-style: none;
   border-radius: var(--radius-l);
+  border: 1px solid var(--border);
   background: var(--cell);
 }
 /* Hairline separators, inset to line up with the text. */
@@ -737,6 +746,7 @@ select.input {
   display: grid;
   overflow: hidden;
   border-radius: var(--radius-l);
+  border: 1px solid var(--border);
   background: var(--cell);
 }
 .menu-item {
@@ -796,8 +806,9 @@ select.input {
   max-width: 624px;
   max-height: 85dvh;
   margin-bottom: max(8px, env(safe-area-inset-bottom));
+  border: 1px solid var(--border);
   border-radius: var(--radius-l);
-  background: var(--bg);
+  background: var(--sheet);
   box-shadow: var(--shadow-float);
   animation: slide-up 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
@@ -994,6 +1005,7 @@ select.input {
   overflow: hidden;
   list-style: none;
   border-radius: var(--radius-l);
+  border: 1px solid var(--border);
   background: var(--cell);
 }
 .day-row {
@@ -1058,9 +1070,10 @@ select.input {
   gap: 12px;
   margin: 0 -12px 12px;
   padding: calc(env(safe-area-inset-top) + 8px) 12px 12px;
-  background: linear-gradient(var(--bg) 60%, color-mix(in srgb, var(--bg) 70%, transparent));
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  /* Fades out at the bottom so there's no seam over the page glow; the blur keeps the title legible. */
+  background: linear-gradient(color-mix(in srgb, var(--bg) 80%, transparent) 55%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 .workout-header h1 {
   margin: 0;
@@ -1141,9 +1154,10 @@ select.input {
   border-radius: var(--radius-m);
   transition: background-color 0.2s;
 }
-/* The set you're on: lifted onto the page background, so your eye lands on it between sets. */
+/* The set you're on: outlined in gold, so your eye lands on it between sets. */
 .set-row.current {
   background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--tint-line);
 }
 .set-row.current .stepper {
   background: var(--cell);
@@ -1238,8 +1252,9 @@ select.input {
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: var(--tab-gap);
+  bottom: max(12px, var(--tab-gap));
   z-index: 30;
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1312,23 +1327,36 @@ select.input {
   }
 }
 
-/* A workout in progress, docked above the tab bar so it's one tap away from any tab. */
+/* A workout in progress: a sheet docked on top of the tab bar, one tap away from any tab. */
 .workout-bar {
   position: fixed;
-  left: 24px;
-  right: 24px;
-  bottom: calc(var(--tab-gap) + var(--tab-h) + 8px);
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tab-gap) + var(--tab-h));
   z-index: 10;
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: 464px;
-  height: 56px;
+  max-width: 640px;
+  height: 64px;
   margin: 0 auto;
-  padding: 0 16px 0 10px;
-  border-radius: 999px;
+  padding: 8px 20px 0 16px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
   color: var(--label);
   text-decoration: none;
+}
+.workout-bar::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 999px;
+  background: var(--fill);
 }
 .workout-bar-icon {
   display: grid;
@@ -1336,8 +1364,9 @@ select.input {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--tint);
-  color: var(--on-tint);
+  background: var(--tint-soft);
+  box-shadow: inset 0 0 0 1px var(--tint-line);
+  color: var(--tint);
 }
 .workout-bar-text {
   flex: 1;
@@ -1390,13 +1419,14 @@ select.input {
   display: grid;
   gap: 2px;
   min-width: 0;
-  padding: 14px;
+  padding: 14px 12px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-l);
   background: var(--cell);
 }
 .stat-value {
   overflow: hidden;
-  font-size: 22px;
+  font-size: 20px; /* "120.3kg" fits a third of a 390px screen */
   line-height: 28px;
   font-weight: 700;
   white-space: nowrap;
@@ -1457,29 +1487,25 @@ select.input {
   color: var(--label-2);
 }
 
-/* ---------- Tab bar: floating and translucent. */
+/* ---------- Tab bar: docked to the bottom edge; the active tab is a gold pill. */
 
 .bottom-nav {
   position: fixed;
-  left: 16px;
-  right: 16px;
-  bottom: var(--tab-gap);
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 10;
   display: flex;
-  max-width: 480px;
-  height: var(--tab-h);
-  margin: 0 auto;
-  padding: 4px;
-  border-radius: 999px;
+  gap: 4px;
+  height: calc(var(--tab-h) + var(--tab-gap));
+  padding: 8px 12px calc(8px + var(--tab-gap));
+  border-top: 1px solid var(--border);
 }
 .glass {
   background: var(--glass);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  box-shadow:
-    var(--glass-shadow),
-    inset 0 0 0 0.5px var(--glass-rim),
-    inset 0 1px 0 var(--glass-rim);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: var(--glass-shadow);
 }
 .nav-item {
   flex: 1;
@@ -1490,7 +1516,7 @@ select.input {
   gap: 2px;
   min-width: 0;
   border-radius: 999px;
-  color: var(--label);
+  color: var(--label-2);
   font-size: 10px;
   line-height: 12px;
   font-weight: 600;
@@ -1500,7 +1526,7 @@ select.input {
     color 0.2s;
 }
 .nav-item.active {
-  background: var(--fill-3);
+  background: var(--tint-soft);
   color: var(--tint);
 }
 
@@ -1527,8 +1553,7 @@ select.input {
   margin: 0;
   font-size: 28px; /* Title 1 */
   line-height: 34px;
-  font-weight: 700;
-  letter-spacing: 0.36px;
+  font-weight: 600;
 }
 .hero-list {
   margin: 8px 0 0;
@@ -1574,14 +1599,15 @@ select.input {
   font-size: 19px;
 }
 
-/* A workout in progress takes over the hero. */
+/* A workout in progress takes over the hero, glowing ember. */
 .hero-live {
-  box-shadow: inset 0 0 0 2px var(--tint);
+  border-color: var(--ember);
+  box-shadow: 0 0 36px var(--glow);
 }
 .hero-timer {
   font-size: 56px;
   line-height: 62px;
-  font-weight: 700;
+  font-weight: 500;
 }
 .hero-progress {
   display: grid;
@@ -1632,17 +1658,17 @@ select.input {
 .week-dot {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--fill-3);
+  box-shadow: inset 0 0 0 1px var(--fill);
 }
 .week-day.today .week-dot {
-  box-shadow: inset 0 0 0 2px var(--tint);
+  box-shadow: inset 0 0 0 1px var(--tint);
 }
 .week-day.trained .week-dot {
-  background: var(--tint);
-  color: var(--on-tint);
+  background: var(--tint-soft);
+  color: var(--tint);
 }
 .week-stats {
   display: grid;
@@ -1669,7 +1695,7 @@ select.input {
   overflow: hidden;
   font-size: 24px;
   line-height: 30px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -2066,6 +2092,9 @@ select.input {
 .app:has(.workout-bar) .composer {
   bottom: calc(var(--tab-h) + var(--tab-gap) + 72px);
 }
+.composer {
+  border-top: 1px solid var(--border);
+}
 .composer-input {
   flex: 1;
   min-height: 50px;
@@ -2144,16 +2173,17 @@ select.input {
   padding: 6px 2px 4px;
   border: 0;
   border-radius: var(--radius-s);
-  background: var(--fill-3);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--fill);
   color: var(--label);
   cursor: pointer;
 }
 .calendar-day.outside {
-  background: transparent;
+  box-shadow: none;
   color: var(--label-3);
 }
 .calendar-day.today {
-  box-shadow: inset 0 0 0 2px var(--tint);
+  box-shadow: inset 0 0 0 1px var(--tint);
 }
 .calendar-day.off {
   background: transparent;
