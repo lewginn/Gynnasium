@@ -11,7 +11,7 @@ export async function askCoach(request: CoachRequest, signal?: AbortSignal): Pro
   if (!token) throw new CoachFailure('Your login needs refreshing: connect to the internet, or sign out and back in.')
   let res: Response
   try {
-    res = await fetch('/api/coach', {
+    res = await fetch(`${import.meta.env.VITE_API_ORIGIN ?? ''}/api/coach`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(request),

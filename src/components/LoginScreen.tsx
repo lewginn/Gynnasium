@@ -5,6 +5,8 @@ import { createAccount, sendLoginLink, signInWithPassword, useSync } from '../sy
 type Mode = 'password' | 'create' | 'link'
 
 const MIN_PASSWORD = 8
+/** In the iPhone app an emailed link opens Safari, not the app, so it signs in with a password only. */
+const NATIVE_APP = typeof location !== 'undefined' && location.protocol === 'capacitor:'
 
 /** Shown instead of the app until you sign in. Signing in is required so everything belongs to your account. */
 export default function LoginScreen() {
@@ -120,7 +122,7 @@ export default function LoginScreen() {
                 Create an account
               </button>
             )}
-            {mode !== 'link' && (
+            {mode !== 'link' && !NATIVE_APP && (
               <button type="button" className="btn btn-plain btn-sm" onClick={() => switchTo('link')}>
                 Email me a login link instead
               </button>
