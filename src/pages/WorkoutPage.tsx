@@ -74,11 +74,12 @@ export default function WorkoutPage() {
   }
 
   // The leave sheet explains discarding already, so it skips the second ask.
+  // No navigate here: the effect above leaves as soon as the workout is gone, while PRs are still being
+  // re-checked. Navigating again after that would pull you back to Today if you'd already tapped elsewhere.
   const discard = async (ask = true) => {
     if (ask && !(await confirm({ title: 'Discard workout?', message: 'Nothing from it is saved.', action: 'Discard workout', destructive: true }))) return
     restTimer.dismiss()
     await discardSession(session.id)
-    navigate('/', { replace: true })
   }
 
   // The first exercise with sets left is the one you're on.
