@@ -78,7 +78,7 @@ The app lives on an iPhone. One dark theme, warm and quiet: near-black panels, c
 npm run lint && npm run typecheck && npm test
 PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e   # in cloud sessions; plain `npm run test:e2e` elsewhere
 ```
-E2E runs on an emulated iPhone 15 (viewport, touch, user agent) against the production build, so the service worker / offline mode is tested.
+E2E runs on an emulated iPhone 15 (viewport, touch, user agent) against the production build, so the service worker / offline mode is tested. It runs with reduced motion, so sheets don't slide under a tap: animations aren't covered, check those by hand.
 The engine is Chromium, not WebKit, so Safari-only behaviour (e.g. no `navigator.vibrate`, audio needing a tap to unlock, `-webkit-` prefixes) isn't covered: check those by reading the code, and say so in the PR.
 Screenshots go to `test-results/screens/`.
 
