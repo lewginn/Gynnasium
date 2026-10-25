@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeftRight, ArrowUp, ArrowUpDown, Check, ChevronLeft, LoaderCircle, Minus, Pencil, Plus, SquarePen, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { loadChat, saveChat } from '../coach/chat'
 import { askCoach, CoachFailure } from '../coach/client'
 import {
@@ -14,6 +14,7 @@ import {
   daysOff,
   goalData,
   goalPhases,
+  lastWeekReview,
   loadExercises,
   loadPlan,
 } from '../db/repo'
@@ -35,6 +36,7 @@ import {
 } from '../lib/coach'
 import type { CoachMode, CoachTurn, ProposedNutrition, ProposedPlan } from '../lib/coachSchema'
 import { targetProgress } from '../lib/goals'
+import { REVIEW_PROMPT, reviewText } from '../lib/review'
 import { WEEKDAY_SHORT, shortDate, todayKey } from '../lib/schedule'
 import { dayLabel, sortDays } from '../lib/weeks'
 import { useConfirm } from '../state/confirm'
@@ -83,13 +85,18 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
   const { planId } = useParams()
   const mode: CoachMode = forGoal ? 'goal' : planId ? 'edit' : 'build'
   const chatKey = forGoal ? 'goal' : planId
+  // Opened from last week's review: the review goes in the context, and its first message waits in the box.
+  const [params] = useSearchParams()
+  const fromReview = mode === 'edit' && params.get('from') === 'review'
   const navigate = useNavigate()
   const confirm = useConfirm()
   const settings = useSettings()
   const sync = useSync()
   const plan = useLiveQuery(async () => (planId ? ((await loadPlan(planId)) ?? null) : null), [planId])
   const [entries, setEntries] = useState<Entry[]>(() => loadChat<Entry>(chatKey))
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState(() =>
+    fromReview && !entries.some((e) => e.role === 'user' && e.text === REVIEW_PROMPT) ? REVIEW_PROMPT : '',
+  )
   const [thinking, setThinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -131,6 +138,7 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
       if (planId && !detail) throw new CoachFailure('This plan no longer exists.')
       const training = trainingText(await coachTrainingSummary(planId), settings.units)
       let context = detail ? `${training}\n\n${planText(detail)}` : training
+      if (fromReview) context += `\n\n${reviewText(await lastWeekReview(), settings.units)}`
       const goal = forGoal ? await activeGoal() : null
       if (forGoal) {
         if (!goal) throw new CoachFailure('Set a goal first.')
