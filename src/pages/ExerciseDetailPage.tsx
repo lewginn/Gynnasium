@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import LineChart from '../components/charts/LineChart'
 import { exerciseHistory, exerciseTrend, loadExercise, setLoggingOverride } from '../db/repo'
 import { useSettings } from '../db/settings'
-import { formatDay, formatRest } from '../lib/format'
+import { formatRest, formatWhen } from '../lib/format'
 import { EQUIPMENT_LABELS, MUSCLE_LABELS, PATTERN_LABELS } from '../lib/labels'
 import { bestE1RM, countsForStats, formatAddedWeight, formatSeconds, summariseSets } from '../lib/summary'
 import type { LoggingType, SetLog, Settings } from '../lib/types'
@@ -83,8 +83,8 @@ export default function ExerciseDetailPage() {
           <ul className="history-list">
             {history.map(({ session, sets }) => (
               <li key={session.id}>
-                <Link to={`/history/${session.id}`} className="history-date">
-                  {formatDay(session.startedAt)}
+                <Link to={`/history/${session.id}`} className="history-date when">
+                  {formatWhen(session.startedAt)}
                 </Link>
                 <span>
                   {summariseSets(sets.filter((s) => s.setType !== 'warmup'), settings, exercise.logging)}
