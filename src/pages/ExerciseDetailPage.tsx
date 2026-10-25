@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { ChevronLeft, Trophy } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import LineChart from '../components/charts/LineChart'
+import { ExerciseNoteCard } from '../components/ExerciseNote'
 import { exerciseHistory, exerciseTrend, loadExercise, setLoggingOverride } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { formatDay, formatRest } from '../lib/format'
@@ -97,6 +98,8 @@ export default function ExerciseDetailPage() {
           <p className="muted">You haven't logged this yet. Your sets, PRs and estimated 1RM will show here.</p>
         )}
       </section>
+
+      <ExerciseNoteCard exerciseId={exercise.id} exerciseName={exercise.name} />
 
       <section className="card">
         <h2 id="log-as">Log as</h2>
