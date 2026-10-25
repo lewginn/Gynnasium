@@ -54,6 +54,7 @@ export const SYNCED_TABLES = [
   },
   { local: 'bodyMetrics', remote: 'body_metrics', columns: ['id', 'type', 'value', 'date', 'source'] },
   { local: 'daysOff', remote: 'days_off', columns: ['id', 'date', 'note'] },
+  { local: 'exerciseNotes', remote: 'exercise_notes', columns: ['id', 'exercise_id', 'text'] },
 ] as const
 
 export type SyncedTable = (typeof SYNCED_TABLES)[number]

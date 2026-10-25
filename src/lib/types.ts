@@ -178,6 +178,15 @@ export interface DayOff extends Synced {
   note?: string
 }
 
+/**
+ * A note that sticks to an exercise across workouts ("Seat 4, grip wide"). Private: never shared with friends.
+ * One live note per exercise; if two devices each created one, the most recently updated wins (`lib/notes.ts`).
+ */
+export interface ExerciseNote extends Synced {
+  exerciseId: string
+  text: string
+}
+
 export interface Settings {
   units: Units
   defaultRestSec: number
