@@ -47,6 +47,12 @@ export function weightIncrement(exercise: ProgressionInput['exercise'], units: U
   }
 }
 
+/** Default target: reps for most exercises, seconds for timed ones. */
+export function defaultRepRange(exercise: Pick<Exercise, 'mechanic' | 'logging'>): [number, number] {
+  if (exercise.logging === 'time') return [30, 60]
+  return exercise.mechanic === 'compound' ? [6, 10] : [10, 15]
+}
+
 /** Adds `steps` increments to a weight, landing on a number that's easy to load in the user's units. */
 function step(weightKg: number, steps: number, inc: number, units: Units): number {
   const shown = roundForDisplay(toDisplay(weightKg, units), units)

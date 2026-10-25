@@ -1,9 +1,10 @@
 import type { ResolvedChange, TrainingSummary } from '../lib/coach'
 import type { ProposedPlan } from '../lib/coachSchema'
 import { estimate1RM } from '../lib/e1rm'
-import { suggestNext, type Progression } from '../lib/progression'
+import { defaultRepRange, suggestNext, type Progression } from '../lib/progression'
 import { toDateKey, weeklyCounts, type Point } from '../lib/metrics'
 import { detectPRs } from '../lib/prs'
+import { weeklyReview, type WeeklyReview } from '../lib/review'
 import { inferFocusMuscles } from '../lib/suggest'
 import { totalVolumeKg } from '../lib/summary'
 import { dayLabel, sortDays } from '../lib/weeks'
@@ -94,11 +95,7 @@ export async function deletePlanDay(id: string) {
   await db.transaction('rw', db.planDays, db.planExercises, () => deleteDayRows(id, now()))
 }
 
-/** Default target: reps for most exercises, seconds for timed ones. */
-export function defaultRepRange(exercise: Pick<Exercise, 'mechanic' | 'logging'>): [number, number] {
-  if (exercise.logging === 'time') return [30, 60]
-  return exercise.mechanic === 'compound' ? [6, 10] : [10, 15]
-}
+export { defaultRepRange }
 
 export async function addPlanExercise(planDayId: string, exercise: Exercise): Promise<string> {
   const id = uuid()
@@ -933,6 +930,31 @@ export async function coachTrainingSummary(excludePlanId?: string, weeks = 6): P
   const weight = (await bodyMetrics('bodyweight'))[0]
   const otherPlans = (await db.plans.toArray()).filter((p) => alive(p) && p.id !== excludePlanId).map((p) => p.name)
   return { workouts: sessions.length, weeks, bodyweightKg: weight && { value: weight.value, date: weight.date }, lifts, otherPlans }
+}
+
+// ---------------------------------------------------------------- Weekly review
+
+/** Last Monday–Sunday, reviewed against the plan (see lib/review.ts). Reads only; nothing leaves the phone. */
+export async function lastWeekReview(today: string = toDateKey(now())): Promise<WeeklyReview> {
+  const sessions = (await db.sessions.toArray()).filter((s) => alive(s) && !!s.endedAt)
+  const live = new Map(sessions.map((s) => [s.id, s]))
+  const ses = new Map((await db.sessionExercises.toArray()).filter((se) => alive(se) && live.has(se.sessionId)).map((se) => [se.id, se.sessionId]))
+  const sets = (await db.setLogs.toArray()).filter((s) => alive(s) && !!s.completedAt && s.setType !== 'warmup' && ses.has(s.sessionExerciseId))
+  const bySession = new Map<string, SetLog[]>()
+  for (const s of sets) {
+    const id = ses.get(s.sessionExerciseId)!
+    bySession.set(id, [...(bySession.get(id) ?? []), s])
+  }
+  const planExercises = (await db.planExercises.toArray()).filter(alive)
+  return weeklyReview({
+    today,
+    plans: await plansWithDays(),
+    planExercises,
+    daysOff: await daysOff(),
+    workouts: sessions.map((session) => ({ session, sets: bySession.get(session.id) ?? [] })),
+    exercises: await loadExercises([...sets.map((s) => s.exerciseId), ...planExercises.map((pe) => pe.exerciseId)]),
+    units: await currentUnits(),
+  })
 }
 
 // ---------------------------------------------------------------- Calendar
