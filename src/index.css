@@ -1123,6 +1123,16 @@ select.input {
 .hint {
   margin: -2px 4px 8px;
 }
+/* Under the sets: Warm-up (until it's used) beside Add set, so the set grid never moves. */
+.set-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.set-actions .btn {
+  flex: 1;
+  min-width: 0;
+}
 
 .set-grid {
   display: grid;
