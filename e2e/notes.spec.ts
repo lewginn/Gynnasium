@@ -117,3 +117,40 @@ test('add a note mid-workout, see it next time and on the exercise page, edit it
   await page.goto(`/exercises/Barbell_Squat`)
   await expect(page.getByRole('region', { name: 'Note', exact: true }).getByRole('button', { name: 'Add note' })).toBeVisible()
 })
+
+test('the note sits the same distance under a one- or two-line name', async ({ page }) => {
+  await waitForLibrary(page)
+  const squat = await startWithSquat(page)
+  await addExerciseToWorkout(page, 'barbell bench press', /^Barbell Bench Press - Medium Grip/)
+  const bench = exerciseCard(page, 'Barbell Bench Press - Medium Grip')
+
+  const gap = async (card: Locator, name: string) => {
+    await card.getByRole('button', { name: `Add a note to ${name}` }).tap()
+    const sheet = page.getByRole('dialog', { name })
+    await sheet.getByRole('textbox', { name: 'Note' }).fill('Seat 4')
+    await sheet.getByRole('button', { name: 'Save' }).tap()
+    await expect(sheet).toBeHidden()
+    // From the bottom of the name's last line to the top of the note's text.
+    const nameBottom = await card.getByRole('heading', { name }).evaluate((h) => {
+      const range = document.createRange()
+      range.selectNodeContents(h)
+      const lines = range.getClientRects()
+      return lines[lines.length - 1].bottom
+    })
+    const lines = await card.getByRole('heading', { name }).evaluate((h) => {
+      const range = document.createRange()
+      range.selectNodeContents(h)
+      return new Set(Array.from(range.getClientRects(), (r) => Math.round(r.top))).size
+    })
+    return { lines, gap: (await card.locator('.note-text').boundingBox())!.y - nameBottom }
+  }
+
+  const one = await gap(squat, SQUAT)
+  const two = await gap(bench, 'Barbell Bench Press - Medium Grip')
+  expect(one.lines).toBe(1)
+  expect(two.lines).toBe(2)
+  expect(one.gap).toBeGreaterThanOrEqual(4)
+  expect(Math.abs(two.gap - one.gap)).toBeLessThanOrEqual(1)
+  await bench.screenshot({ path: 'test-results/screens/exercise-notes/two-line-name.png' })
+  await squat.screenshot({ path: 'test-results/screens/exercise-notes/one-line-name.png' })
+})

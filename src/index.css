@@ -2485,6 +2485,10 @@ select.input {
   flex: 1 1 0;
   min-width: 0;
 }
+/* With a note, the name gets even space above and below, so the note sits the same distance under a one- or two-line name. */
+.exercise-card .title-row:has(.note-line) h2 {
+  padding-block: 10px;
+}
 /* The note's tap area tucks up under the name; the title row's buttons stay on top where they meet. */
 .exercise-card .title-row .icon-btn {
   position: relative;
@@ -2500,7 +2504,7 @@ select.input {
   align-items: flex-start;
   gap: 6px;
   min-height: 44px;
-  margin: -8px 0 -6px;
+  margin: -6px 0 -6px;
   padding: 2px 4px;
   border: 0;
   background: none;
