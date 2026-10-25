@@ -160,10 +160,11 @@ export function encodeWorkout(session: WorkoutSession, exercises: FitExercise[],
   return encoder.close()
 }
 
-/** "2026-10-19-push.fit" */
+/** "2026-10-19-1830-push.fit": the start time keeps two workouts on one day apart. */
 export function fitFileName(session: Pick<WorkoutSession, 'startedAt' | 'name'>): string {
   const d = new Date(session.startedAt)
-  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`
   const slug = session.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'workout'
   return `${date}-${slug}.fit`
 }
