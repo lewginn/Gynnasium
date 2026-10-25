@@ -8,17 +8,17 @@ test.use({ viewport: { width: 390, height: 844 } })
 
 const cardShot = (card: Locator, name: string) => card.screenshot({ path: `test-results/screens/warmup/${name}.png` })
 
-test('one tap adds warm-up sets before the first working set', async ({ page }) => {
+test('one tap adds a warm-up set before the first working set', async ({ page }) => {
   await waitForLibrary(page)
   await addPushPullLegsPlan(page)
 
-  // First workout: nothing to warm up to until there's a weight, and not once a set is done.
+  // First workout: offered at any weight, even before one is entered, and gone once a set is done.
   await nav(page, 'Today')
   await page.getByRole('button', { name: 'Start Push' }).tap()
   const bench = exerciseCard(page, BENCH)
   const warmup = bench.getByRole('button', { name: 'Warm-up' })
   await expect(bench.getByText('No history yet')).toBeVisible()
-  await expect(warmup).toHaveCount(0)
+  await expect(warmup).toBeVisible()
   await typeInto(setInput(bench, 1, 'weight'), '60')
   await expect(warmup).toBeVisible()
   await bench.getByRole('button', { name: 'Complete set 1' }).tap()
@@ -45,14 +45,11 @@ test('one tap adds warm-up sets before the first working set', async ({ page }) 
   await cardShot(bench, 'before')
   await warmup.tap()
 
-  // Bar × 10, then 40% (24 → 25kg) × 8, 60% (36 → 35kg) × 5, 80% (48 → 47.5kg) × 3, then the working sets.
+  // Half the working weight × 10, then the working sets.
   const rows = bench.locator('.set-row')
-  await expect(rows).toHaveCount(8)
+  await expect(rows).toHaveCount(5)
   const expected: [string, string, string][] = [
-    ['Set W', '20', '10'],
-    ['Set W', '25', '8'],
-    ['Set W', '35', '5'],
-    ['Set W', '47.5', '3'],
+    ['Set W', '30', '10'],
     ['Set 1', '60', '8'],
     ['Set 2', '60', '8'],
   ]
@@ -69,14 +66,12 @@ test('one tap adds warm-up sets before the first working set', async ({ page }) 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await cardShot(bench, 'after')
 
-  // Done as working sets, 20 × 10 would beat 60 × 8 for reps. As warm-ups they never count.
-  for (let done = 1; done <= 4; done++) {
-    await bench.getByRole('button', { name: 'Complete set W' }).first().tap()
-    await expect(bench.getByRole('button', { name: 'Undo set W' })).toHaveCount(done)
-  }
+  // Done as a working set, 30 × 10 would beat 60 × 8 for reps. As a warm-up it never counts.
+  await bench.getByRole('button', { name: 'Complete set W' }).tap()
+  await expect(bench.getByRole('button', { name: 'Undo set W' })).toHaveCount(1)
   await expect(bench.locator('.pr-mark')).toHaveCount(0)
   await expect(page.getByText('New PR')).toHaveCount(0)
-  await expect(rows.nth(4)).toHaveClass(/current/)
+  await expect(rows.nth(1)).toHaveClass(/current/)
   await expect(warmup).toHaveCount(0)
 })
 
@@ -93,7 +88,7 @@ test('the Warm-up button fits beside Add set with RPE on', async ({ page }) => {
   await typeInto(setInput(squat, 1, 'weight'), '100')
   await cardShot(squat, 'rpe-before')
   await squat.getByRole('button', { name: 'Warm-up' }).tap()
-  await expect(squat.getByLabel('Set W RPE')).toHaveCount(4)
+  await expect(squat.getByLabel('Set W RPE')).toHaveCount(1)
   await expect(squat.getByRole('button', { name: 'Add set' })).toBeVisible()
   const card = (await squat.boundingBox())!
   const add = (await squat.getByRole('button', { name: 'Add set' }).boundingBox())!

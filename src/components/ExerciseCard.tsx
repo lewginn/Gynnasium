@@ -111,7 +111,7 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
       {logging === 'bodyweight' && <p className="muted small hint">+{settings.units} is added weight; use a minus for assisted.</p>}
 
       <div className="set-actions">
-        <WarmupButton entry={entry} settings={settings} />
+        <WarmupButton entry={entry} />
         <button className="btn btn-sm" onClick={() => addSet(se.id)}>
           <Plus size={18} aria-hidden /> Add set
         </button>
