@@ -6,6 +6,7 @@ import { toDateKey, weeklyCounts, type Point } from '../lib/metrics'
 import { detectPRs } from '../lib/prs'
 import { inferFocusMuscles } from '../lib/suggest'
 import { totalVolumeKg } from '../lib/summary'
+import { canAddWarmups, warmupSets } from '../lib/warmup'
 import { dayLabel, sortDays } from '../lib/weeks'
 import type { GoalData } from '../lib/goals'
 import type { PlanWithDays } from '../lib/schedule'
@@ -341,7 +342,8 @@ export async function swapSessionExercise(sessionExerciseId: string, newExercise
   )
   const pending = sets.filter((s) => !s.completedAt)
   const done = sets.filter((s) => s.completedAt)
-  const refill = await planSets(se.id, ex, pending.length, se.sessionId)
+  // Warm-ups not yet done were for the old exercise's weight: they go, and the new one can have its own.
+  const refill = await planSets(se.id, ex, pending.filter((s) => s.setType !== 'warmup').length, se.sessionId)
   await db.transaction('rw', db.sessionExercises, db.setLogs, async () => {
     await db.sessionExercises.update(se.id, {
       exerciseId: newExercise.id,
@@ -398,6 +400,48 @@ export async function addSet(sessionExerciseId: string) {
     ...(timed ? { durationSec: last?.durationSec ?? 30 } : {}),
     rpe: last?.rpe,
     updatedAt: now(),
+  })
+}
+
+/**
+ * Puts a ramp of warm-up sets (`lib/warmup.ts`) before the first working set, from the weight and reps it
+ * holds now. Does nothing once the exercise has a warm-up set or a completed working set, so a double tap
+ * can't add two ramps. Returns how many sets were added.
+ */
+export async function addWarmupSets(sessionExerciseId: string): Promise<number> {
+  return db.transaction('rw', db.setLogs, db.sessionExercises, db.exercises, db.kv, async () => {
+    const se = await db.sessionExercises.get(sessionExerciseId)
+    if (!alive(se)) return 0
+    const sets = (await db.setLogs.where('sessionExerciseId').equals(se.id).filter(alive).toArray()).sort(
+      (a, b) => a.setNumber - b.setNumber,
+    )
+    const first = sets.find((s) => s.setType === 'working')
+    if (!first || !canAddWarmups(sets)) return 0
+    const exercise = await loadExercise(se.exerciseId)
+    if (!exercise) return 0
+    const ramp = warmupSets({
+      workingWeightKg: first.weightKg,
+      workingReps: first.reps,
+      equipment: exercise.equipment,
+      logging: exercise.logging,
+      units: await currentUnits(),
+    })
+    const t = now()
+    // Existing sets move down to make room, so set numbers stay in order.
+    for (const s of sets) await db.setLogs.update(s.id, { setNumber: s.setNumber + ramp.length, updatedAt: t })
+    await db.setLogs.bulkAdd(
+      ramp.map((w, i) => ({
+        id: uuid(),
+        sessionExerciseId: se.id,
+        exerciseId: se.exerciseId,
+        setNumber: i + 1,
+        setType: 'warmup' as const,
+        weightKg: w.weightKg,
+        reps: w.reps,
+        updatedAt: t,
+      })),
+    )
+    return ramp.length
   })
 }
 

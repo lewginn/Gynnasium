@@ -9,6 +9,7 @@ import {
   addPlanExercise,
   addSessionExercise,
   addSet,
+  addWarmupSets,
   activeGoal,
   applyGoalPlan,
   assignWeekday,
@@ -201,6 +202,58 @@ describe('workouts', () => {
       [1, 40, true],
       [2, 50, false],
       [3, 50, false],
+    ])
+  })
+
+  it('adds a warm-up ramp before the first working set, renumbering the rest, once', async () => {
+    await logWorkout('Barbell_Squat', [[100, 5], [100, 5], [100, 5]])
+    const sessionId = await startSession()
+    const seId = await addSessionExercise(sessionId, await exercise('Barbell_Squat'))
+    const before = (await loadSession(sessionId))!.exercises[0].sets
+    expect(await addWarmupSets(seId)).toBe(4)
+    const sets = (await loadSession(sessionId))!.exercises[0].sets
+    expect(sets.map((s) => [s.setNumber, s.setType, s.weightKg, s.reps])).toEqual([
+      [1, 'warmup', 20, 10],
+      [2, 'warmup', 40, 8],
+      [3, 'warmup', 60, 5],
+      [4, 'warmup', 80, 3],
+      [5, 'working', 100, 6],
+      [6, 'working', 100, 6],
+      [7, 'working', 100, 6],
+    ])
+    // Moved sets are marked for sync.
+    for (const s of sets.slice(4)) expect(s.updatedAt).toBeGreaterThanOrEqual(before[0].updatedAt)
+    // A second tap does nothing.
+    expect(await addWarmupSets(seId)).toBe(0)
+    expect((await loadSession(sessionId))!.exercises[0].sets).toHaveLength(7)
+
+    // Warm-ups never count towards PRs.
+    for (const s of sets.slice(0, 4)) expect(await completeSet(s.id)).toEqual([])
+  })
+
+  it('adds no warm-ups after a set is done, or for a bodyweight exercise', async () => {
+    const sessionId = await startSession()
+    const squat = await addSessionExercise(sessionId, await exercise('Barbell_Squat'))
+    const pullups = await addSessionExercise(sessionId, await exercise('Pullups'))
+    const [squatSets, pullupSets] = (await loadSession(sessionId))!.exercises.map((e) => e.sets)
+    await updateSet(squatSets[0].id, { weightKg: 100 })
+    await updateSet(pullupSets[0].id, { weightKg: 20 })
+    await completeSet(squatSets[0].id)
+    expect(await addWarmupSets(squat)).toBe(0)
+    expect(await addWarmupSets(pullups)).toBe(0)
+  })
+
+  it('swapping drops warm-ups not yet done, keeping the working sets', async () => {
+    await logWorkout('Barbell_Squat', [[100, 5], [100, 5], [100, 5]])
+    const sessionId = await startSession()
+    const seId = await addSessionExercise(sessionId, await exercise('Barbell_Squat'))
+    await addWarmupSets(seId)
+    await swapSessionExercise(seId, await exercise('Seated_Leg_Curl'))
+    const sets = (await loadSession(sessionId))!.exercises[0].sets
+    expect(sets.map((s) => [s.setNumber, s.setType])).toEqual([
+      [1, 'working'],
+      [2, 'working'],
+      [3, 'working'],
     ])
   })
 
