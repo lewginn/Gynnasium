@@ -7,7 +7,7 @@ import ColumnChart from '../components/charts/ColumnChart'
 import Sparkline from '../components/charts/Sparkline'
 import { recentPRSets, recentSessions, topLifts, weeklySets } from '../db/repo'
 import { useSettings } from '../db/settings'
-import { formatDay } from '../lib/format'
+import { formatDay, formatDuration, formatWhen } from '../lib/format'
 import { change } from '../lib/metrics'
 import { PR_LABELS } from '../lib/prs'
 import { formatSet } from '../lib/summary'
@@ -106,7 +106,9 @@ export default function ProgressPage() {
                 <Link to={`/history/${s.id}`} className="list-row list-row-split">
                   <span>
                     <span className="list-title">{s.name}</span>
-                    <span className="list-meta">{formatDay(s.startedAt)}</span>
+                    <span className="list-meta when">
+                      {formatWhen(s.startedAt)} · {formatDuration(s.endedAt! - s.startedAt)}
+                    </span>
                   </span>
                   <ChevronRight size={20} aria-hidden className="muted" />
                 </Link>
