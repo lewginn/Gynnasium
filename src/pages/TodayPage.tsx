@@ -27,7 +27,7 @@ import {
 } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { unlockAudio } from '../lib/feedback'
-import { formatClock, formatDay, formatDuration, formatRest, formatTarget } from '../lib/format'
+import { formatClock, formatDay, formatDuration, formatRest, formatTarget, formatWhen } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
 import { reviewHeadline, showReviewOnToday } from '../lib/review'
 import { bestSet, formatSet } from '../lib/summary'
@@ -332,8 +332,8 @@ export default function TodayPage() {
                 <Link to={`/history/${s.id}`} className="list-row list-row-split">
                   <span>
                     <span className="list-title">{s.name}</span>
-                    <span className="list-meta">
-                      {formatDay(s.startedAt, now)} · {formatDuration(s.endedAt! - s.startedAt)}
+                    <span className="list-meta when">
+                      {formatWhen(s.startedAt, now)} · {formatDuration(s.endedAt! - s.startedAt)}
                     </span>
                   </span>
                   <ChevronRight size={20} aria-hidden />

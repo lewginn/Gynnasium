@@ -80,7 +80,7 @@ describe('encodeWorkout', () => {
     expect(messages.setMesgs!.filter((s) => s.setType === 'rest').length).toBe(5)
   })
 
-  it('names the file after the date and the workout', () => {
-    expect(fitFileName({ startedAt: new Date(2026, 9, 19, 18).getTime(), name: 'Push · Week A' })).toBe('2026-10-19-push-week-a.fit')
+  it('names the file after the date, start time and the workout', () => {
+    expect(fitFileName({ startedAt: new Date(2026, 9, 19, 18, 5).getTime(), name: 'Push · Week A' })).toBe('2026-10-19-1805-push-week-a.fit')
   })
 })

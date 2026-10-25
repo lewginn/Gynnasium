@@ -17,7 +17,7 @@ test('export a finished workout for Garmin Connect', async ({ page }) => {
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export for Garmin' }).tap()
   const file = await download
-  expect(file.suggestedFilename()).toMatch(/^\d{4}-\d{2}-\d{2}-workout\.fit$/)
+  expect(file.suggestedFilename()).toMatch(/^\d{4}-\d{2}-\d{2}-\d{4}-workout\.fit$/)
   await expect(page.getByRole('status').filter({ hasText: 'Import Data' })).toBeVisible()
   await shot(page, 'p4-garmin-export')
 
