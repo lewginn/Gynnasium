@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
-import { formatDay } from '../lib/format'
+import { formatDay, formatWhen } from '../lib/format'
 import { feedItems, friendStats, type FeedRow, type FriendProfileRow, type FriendRow } from '../lib/friends'
 import { formatEstimate } from '../lib/units'
 import { FriendsError, friendFeed, friendList, friendProfile, removeFriend } from '../social/friends'
@@ -134,8 +134,8 @@ export default function FriendPage() {
                 {workouts.map((w) => (
                   <li key={w.id} className="list-row">
                     <span className="list-title">{w.workout}</span>
-                    <span className="list-meta">
-                      {formatDay(w.startedAt)} · {w.sets} {w.sets === 1 ? 'set' : 'sets'}
+                    <span className="list-meta when">
+                      {formatWhen(w.startedAt)} · {w.sets} {w.sets === 1 ? 'set' : 'sets'}
                     </span>
                   </li>
                 ))}

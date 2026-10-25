@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { loadSession, type SessionDetail } from '../db/repo'
 import { useSettings } from '../db/settings'
-import { formatDay, formatDuration } from '../lib/format'
+import { formatDuration, formatFullWhen } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
 import { countsForStats, formatSet, summariseSets, totalVolumeKg } from '../lib/summary'
 import type { Settings } from '../lib/types'
@@ -39,10 +39,7 @@ export default function SessionPage() {
           <ChevronLeft size={18} aria-hidden /> History
         </Link>
         <h1>{session.name}</h1>
-        <p className="muted">
-          {formatDay(session.startedAt)} ·{' '}
-          {new Date(session.startedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-        </p>
+        <p className="muted when">{formatFullWhen(session.startedAt)}</p>
       </header>
 
       <div className="stat-row">

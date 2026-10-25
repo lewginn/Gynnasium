@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import Avatar, { ProfileButton } from '../components/Avatar'
 import { db } from '../db/db'
 import { useSettings } from '../db/settings'
-import { formatDay } from '../lib/format'
+import { formatWhen } from '../lib/format'
 import { checkFriendEmail, feedItems, groupFriends, leaderboardSince, rankLeaderboard, type FeedRow, type FriendGroups, type LeaderRow } from '../lib/friends'
 import { FriendsError, acceptFriend, friendFeed, friendLeaderboard, friendList, removeFriend, sendFriendRequest } from '../social/friends'
 import { useMyProfile } from '../social/profile'
@@ -161,8 +161,8 @@ export default function SocialPage() {
                           <span className="list-title">
                             {item.who} · {item.workout}
                           </span>
-                          <span className="list-meta">
-                            {formatDay(item.startedAt)} · {plural(item.sets, 'set')}
+                          <span className="list-meta when">
+                            {formatWhen(item.startedAt)} · {plural(item.sets, 'set')}
                           </span>
                           {item.prs.map((pr, i) => (
                             <span key={i} className="friend-pr">

@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import Sheet from '../components/Sheet'
 import { activeGoal, daysOff, getActiveSession, goalPhases, plansWithDays, setDayOff, startSession, workoutsByDate } from '../db/repo'
 import { unlockAudio } from '../lib/feedback'
+import { formatTime } from '../lib/format'
 import { countdown, countdownText } from '../lib/goals'
 import { WEEKDAY_SHORT, dayPlan, longDate, monthGrid, shortDate, todayKey, type DayPlan } from '../lib/schedule'
 import { dayLabel } from '../lib/weeks'
@@ -186,7 +187,7 @@ function DaySheet({
   date: string
   today: string
   plan: DayPlan
-  workouts: { id: string; name: string }[]
+  workouts: { id: string; name: string; startedAt: number }[]
   note: string | undefined
   goalName: string | null
   onClose: () => void
@@ -221,10 +222,11 @@ function DaySheet({
         )}
         {workouts.length > 0 && (
           <ul className="plain-list">
-            {workouts.map((w) => (
+            {[...workouts].sort((a, b) => a.startedAt - b.startedAt).map((w) => (
               <li key={w.id}>
                 <Link to={`/history/${w.id}`}>
                   <Check size={14} aria-hidden /> {w.name}
+                  <span className="muted when"> · {formatTime(w.startedAt)}</span>
                 </Link>
               </li>
             ))}

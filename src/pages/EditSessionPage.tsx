@@ -8,7 +8,7 @@ import { db } from '../db/db'
 import { addSessionExercise, discardSession, loadSession, saveSessionEdits } from '../db/repo'
 import { useSettings } from '../db/settings'
 import { syncNow } from '../sync'
-import { formatDay } from '../lib/format'
+import { formatWhen } from '../lib/format'
 import { useConfirm } from '../state/confirm'
 
 /**
@@ -48,7 +48,7 @@ export default function EditSessionPage() {
       <header className="workout-header">
         <div className="grow">
           <h1>Edit {session.name}</h1>
-          <span className="muted small">{formatDay(session.startedAt)}</span>
+          <span className="muted small">{formatWhen(session.startedAt)}</span>
         </div>
         <button className="btn btn-primary" onClick={save}>
           Save

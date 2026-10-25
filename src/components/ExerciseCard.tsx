@@ -24,6 +24,7 @@ import ExerciseNote from './ExerciseNote'
 import ExercisePicker from './ExercisePicker'
 import Sheet from './Sheet'
 import Stepper from './Stepper'
+import WarmupButton from './WarmupButton'
 
 interface Props {
   entry: SessionDetail['exercises'][number]
@@ -111,9 +112,12 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
       </div>
       {logging === 'bodyweight' && <p className="muted small hint">+{settings.units} is added weight; use a minus for assisted.</p>}
 
-      <button className="btn btn-sm btn-block" onClick={() => addSet(se.id)}>
-        <Plus size={18} aria-hidden /> Add set
-      </button>
+      <div className="set-actions">
+        <WarmupButton entry={entry} />
+        <button className="btn btn-sm" onClick={() => addSet(se.id)}>
+          <Plus size={18} aria-hidden /> Add set
+        </button>
+      </div>
 
       {menu && (
         <Sheet title={exercise.name} onClose={() => setMenu(false)}>

@@ -157,7 +157,8 @@ svg {
 .week-stats dd,
 .pr-value,
 .workout-header .muted,
-.workout-bar-meta {
+.workout-bar-meta,
+.when {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
 }
@@ -1122,6 +1123,16 @@ select.input {
 .hint {
   margin: -2px 4px 8px;
 }
+/* Under the sets: Warm-up (until it's used) beside Add set, so the set grid never moves. */
+.set-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.set-actions .btn {
+  flex: 1;
+  min-width: 0;
+}
 
 .set-grid {
   display: grid;
@@ -1455,7 +1466,7 @@ select.input {
 }
 .history-list li {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 9em 1fr; /* fits "Tue 21 Oct, 18:30"; a longer date wraps */
   gap: 8px;
   font-size: 15px;
 }
