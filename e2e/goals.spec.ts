@@ -154,6 +154,8 @@ test('deleting a goal clears its coach chat', async ({ page }) => {
   await page.getByRole('link', { name: 'Goal' }).tap()
   await page.getByRole('button', { name: 'Delete goal' }).tap()
   await page.getByRole('dialog').getByRole('button', { name: 'Delete goal' }).tap()
+  // The page goes to Today once the delete is saved; reloading before then would still show the goal.
+  await expect(page).toHaveURL(/\/$/)
   await page.goto('/goal')
   await setGoal('Marathon')
   await page.getByRole('link', { name: 'Plan with Claude' }).tap()
