@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { GymDB } from '../db/db'
+import { exerciseNote, saveExerciseNote } from '../db/notes'
 import type { Row } from './mapping'
 import { syncOnce, type Remote } from './engine'
 
@@ -156,6 +157,26 @@ describe('sync', () => {
     await syncOnce(remote, 'u', a)
     await syncOnce(remote, 'u', b)
     expect(await b.bodyMetrics.count()).toBe(1234)
+  })
+
+  it('exercise notes sync; when two devices each add one, both show the newest, and clearing syncs', async () => {
+    const a = phone()
+    const b = phone()
+    await saveExerciseNote('Barbell_Squat', 'Seat 4', a)
+    await new Promise((r) => setTimeout(r, 2))
+    await saveExerciseNote('Barbell_Squat', 'Grip wide', b) // made offline on the other device, a little later
+    await syncOnce(remote, 'u', a)
+    await syncOnce(remote, 'u', b)
+    await syncOnce(remote, 'u', a)
+    expect((await exerciseNote('Barbell_Squat', a))?.text).toBe('Grip wide')
+    expect((await exerciseNote('Barbell_Squat', b))?.text).toBe('Grip wide')
+    expect(remote.tables.get('exercise_notes')!.get((await exerciseNote('Barbell_Squat', a))!.id)).toMatchObject({ exercise_id: 'Barbell_Squat', text: 'Grip wide' })
+
+    await saveExerciseNote('Barbell_Squat', '', a)
+    await syncOnce(remote, 'u', a)
+    await syncOnce(remote, 'u', b)
+    expect(await exerciseNote('Barbell_Squat', b)).toBeNull()
+    expect([...remote.tables.get('exercise_notes')!.values()].every((r) => r.deleted_at)).toBe(true)
   })
 
   it('signing in as someone else starts sync from scratch', async () => {

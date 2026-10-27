@@ -170,6 +170,38 @@ test('data from another device is pulled in', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'Body' })).toContainText('81.5')
 })
 
+test('exercise notes are pulled in from another device, and edits and clears are backed up', async ({ page }) => {
+  const now = new Date().toISOString()
+  const id = 'aaaaaaaa-0000-4000-8000-000000000003'
+  const rec = await recordSupabase(page, {
+    exercise_notes: [{ id, exercise_id: 'Barbell_Squat', text: 'Use the left rack', updated_at: now, deleted_at: null, server_updated_at: now, user_id: TEST_USER.id }],
+  })
+  await waitForLibrary(page)
+  await page.goto('/exercises/Barbell_Squat')
+  const card = page.getByRole('region', { name: 'Note', exact: true })
+  await expect(card).toContainText('Use the left rack')
+
+  // Edits go up in the background; backing up now saves waiting for the next one.
+  const backUp = async () => {
+    await openProfile(page)
+    await page.getByRole('button', { name: 'Back up now' }).tap()
+  }
+  await card.getByRole('button', { name: 'Edit note' }).tap()
+  await page.getByRole('dialog').getByRole('textbox', { name: 'Note' }).fill('Use the right rack')
+  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).tap()
+  await expect(card).toContainText('Use the right rack')
+  await backUp()
+  await expect.poll(() => rec.upserts.exercise_notes?.find((r) => r.text === 'Use the right rack')).toMatchObject({ id, exercise_id: 'Barbell_Squat', deleted_at: null })
+  expect(Object.keys(rec.upserts.exercise_notes[0])).not.toContain('user_id')
+
+  await page.goto('/exercises/Barbell_Squat')
+  await card.getByRole('button', { name: 'Edit note' }).tap()
+  await page.getByRole('dialog').getByRole('button', { name: 'Clear note' }).tap()
+  await expect(card.getByRole('button', { name: 'Add note' })).toBeVisible()
+  await backUp()
+  await expect.poll(() => rec.upserts.exercise_notes.findLast((r) => r.id === id)?.deleted_at).toBeTruthy()
+})
+
 test('set a password from Settings, to sign in without waiting for an email', async ({ page }) => {
   const updates: Record<string, unknown>[] = []
   await page.route(`${SUPABASE}/auth/v1/user**`, async (route) => {

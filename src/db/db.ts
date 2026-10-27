@@ -3,6 +3,7 @@ import type {
   BodyMetric,
   DayOff,
   Exercise,
+  ExerciseNote,
   Goal,
   Plan,
   PlanDay,
@@ -32,6 +33,7 @@ export class GymDB extends Dexie {
   bodyMetrics!: EntityTable<BodyMetric, 'id'>
   goals!: EntityTable<Goal, 'id'>
   daysOff!: EntityTable<DayOff, 'id'>
+  exerciseNotes!: EntityTable<ExerciseNote, 'id'>
   kv!: EntityTable<KeyValue, 'key'>
 
   constructor(name = 'gynnasium') {
@@ -51,6 +53,10 @@ export class GymDB extends Dexie {
     this.version(2).stores({
       goals: 'id, updatedAt',
       daysOff: 'id, date, updatedAt',
+    })
+    // Sticky notes on exercises: a new table only.
+    this.version(3).stores({
+      exerciseNotes: 'id, exerciseId, updatedAt',
     })
   }
 }

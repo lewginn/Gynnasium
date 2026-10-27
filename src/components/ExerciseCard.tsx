@@ -20,6 +20,7 @@ import { swapSuggestions } from '../lib/suggest'
 import { summariseSets } from '../lib/summary'
 import type { Exercise, LoggingType, SetLog, SetType, Settings } from '../lib/types'
 import { roundForDisplay, toDisplay, toKg, weightStep } from '../lib/units'
+import ExerciseNote from './ExerciseNote'
 import ExercisePicker from './ExercisePicker'
 import Sheet from './Sheet'
 import Stepper from './Stepper'
@@ -67,6 +68,7 @@ export default function ExerciseCard({ entry, sessionId, settings, library, firs
     <section className="card exercise-card" aria-label={exercise.name}>
       <div className="title-row">
         <h2>{exercise.name}</h2>
+        <ExerciseNote exerciseId={exercise.id} exerciseName={exercise.name} />
         <button className="icon-btn" aria-label={`Options for ${exercise.name}`} onClick={() => setMenu(true)}>
           <EllipsisVertical size={20} />
         </button>
