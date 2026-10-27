@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, Check, ChevronLeft, ChevronRight, Flag, MessagesSquare, Pencil, Plus, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { forgetGoalChat } from '../coach/chat'
 import { db } from '../db/db'
 import { activeGoal, alive, deleteGoal, goalData, goalPhases, loadExercises, saveGoal, type GoalFields } from '../db/repo'
 import { useSettings } from '../db/settings'
@@ -127,6 +128,7 @@ function GoalView({ goal, onEdit }: { goal: Goal; onEdit: () => void }) {
         onClick={async () => {
           if (await confirm({ title: `Delete ${goal.name}?`, message: 'Its phase plans are kept as ordinary plans.', action: 'Delete goal', destructive: true })) {
             await deleteGoal(goal.id)
+            forgetGoalChat()
             navigate('/')
           }
         }}

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronUp, MessagesSquare, Pencil, Play, Plus, Sparkles, Trash2, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { forgetPlanChats } from '../coach/chat'
 import ExercisePicker from '../components/ExercisePicker'
 import Sheet from '../components/Sheet'
 import Stepper from '../components/Stepper'
@@ -164,6 +165,7 @@ export default function PlanEditPage() {
         onClick={async () => {
           if (await confirm({ title: `Delete ${plan.name}?`, message: 'Workouts you’ve logged are kept.', action: 'Delete plan', destructive: true })) {
             await deletePlan(plan.id)
+            forgetPlanChats(plan.id)
             navigate('/plans')
           }
         }}

@@ -133,3 +133,32 @@ test('weekly schedule: put plan days on weekdays and see them on the calendar', 
     if (date.slice(0, 7) !== inDays(0).slice(0, 7)) await page.getByRole('button', { name: 'Previous month' }).tap()
   }
 })
+
+test('deleting a goal clears its coach chat', async ({ page }) => {
+  await page.route('**/api/coach', (route) =>
+    route.fulfill({ json: { message: 'Which days can you train?', newPlan: null, changes: null, goalPlan: null } }),
+  )
+  const setGoal = async (name: string) => {
+    const form = page.getByRole('form', { name: 'Goal' })
+    await form.getByLabel('Name').fill(name)
+    await form.getByLabel('Date').fill(inDays(60))
+    await form.getByRole('button', { name: 'Set goal' }).tap()
+    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+  }
+  await page.goto('/goal')
+  await setGoal('Ibiza')
+  await page.getByRole('link', { name: 'Plan with Claude' }).tap()
+  await page.getByRole('button', { name: 'Build me a plan to the date' }).tap()
+  await expect(page.getByText('Which days can you train?')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Goal' }).tap()
+  await page.getByRole('button', { name: 'Delete goal' }).tap()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete goal' }).tap()
+  // The page goes to Today once the delete is saved; reloading before then would still show the goal.
+  await expect(page).toHaveURL(/\/$/)
+  await page.goto('/goal')
+  await setGoal('Marathon')
+  await page.getByRole('link', { name: 'Plan with Claude' }).tap()
+  await expect(page.getByRole('button', { name: 'Build me a plan to the date' })).toBeVisible()
+  await expect(page.getByText('Which days can you train?')).toHaveCount(0)
+})

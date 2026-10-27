@@ -191,3 +191,68 @@ test('“Not now” leaves the plan as it was', async ({ page }) => {
   await page.getByRole('link', { name: 'Push / Pull / Legs' }).tap()
   await expect(page.getByRole('button', { name: /^Barbell Bench Press - Medium Grip \d/ })).toBeVisible()
 })
+
+test('an alternating-weeks plan from Claude shows its weeks; deleting the plan clears the chat', async ({ page }) => {
+  const day = (name: string, week: 1 | 2, exerciseId: string) => ({
+    name,
+    week,
+    weekdays: null,
+    focusMuscles: [],
+    exercises: [{ exerciseId, sets: 3, repMin: 6, repMax: 10, restSec: 120 }],
+  })
+  await mockCoach(page, [
+    {
+      message: 'Legs once a week, push and pull on the other three, swapping between weeks.',
+      changes: null,
+      newPlan: {
+        name: 'Push / pull + legs, A/B',
+        goal: 'Four days a week',
+        days: [
+          day('Legs', 1, 'Barbell_Squat'),
+          day('Push 1', 1, 'Barbell_Bench_Press_-_Medium_Grip'),
+          day('Pull 1', 1, 'Romanian_Deadlift'),
+          day('Push 2', 1, 'Barbell_Bench_Press_-_Medium_Grip'),
+          day('Legs', 2, 'Barbell_Squat'),
+          day('Push 1', 2, 'Barbell_Bench_Press_-_Medium_Grip'),
+          day('Pull 1', 2, 'Romanian_Deadlift'),
+          day('Pull 2', 2, 'Romanian_Deadlift'),
+        ],
+      },
+    },
+  ])
+  await waitForLibrary(page)
+  await nav(page, 'Plans')
+  await page.getByRole('link', { name: 'Build a plan with Claude' }).tap()
+  await page.getByLabel('Message Claude').fill('4 days a week, one legs day, push and pull on the rest, week A and week B')
+  await page.getByRole('button', { name: 'Send' }).tap()
+
+  const proposal = page.getByRole('region', { name: 'Proposed plan: Push / pull + legs, A/B' })
+  await expect(proposal.getByText('Push 2 · Week A')).toBeVisible()
+  await expect(proposal.getByText('Pull 2 · Week B')).toBeVisible()
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await shot(page, 'p3-coach-weeks')
+  await proposal.getByRole('button', { name: 'Create plan' }).tap()
+  await page.getByRole('button', { name: 'Open plan' }).tap()
+  await expect(page.getByRole('group', { name: 'Week B days' }).getByRole('button', { name: 'Pull 2 · Week B' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Delete plan' }).tap()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete plan' }).tap()
+  await page.getByRole('link', { name: 'Build a plan with Claude' }).tap()
+  await expect(page.getByRole('list', { name: 'Conversation' }).getByRole('listitem')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '3 days a week, full gym, build muscle' })).toBeVisible()
+})
+
+test('“New chat” clears the conversation', async ({ page }) => {
+  await mockCoach(page, [{ message: 'How many days a week?', newPlan: null, changes: null }])
+  await page.goto('/coach')
+  await expect(page.getByRole('button', { name: 'New chat' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'I’m new to lifting' }).tap()
+  await expect(page.getByText('How many days a week?')).toBeVisible()
+
+  await page.getByRole('button', { name: 'New chat' }).tap()
+  await page.getByRole('dialog').getByRole('button', { name: 'Clear chat' }).tap()
+  await expect(page.getByText('How many days a week?')).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'I’m new to lifting' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'New chat' })).toHaveCount(0)
+})

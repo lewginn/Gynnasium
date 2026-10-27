@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowLeftRight, ArrowUp, ArrowUpDown, Check, ChevronLeft, LoaderCircle, Minus, Pencil, Plus, TriangleAlert } from 'lucide-react'
+import { ArrowLeftRight, ArrowUp, ArrowUpDown, Check, ChevronLeft, LoaderCircle, Minus, Pencil, Plus, SquarePen, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { loadChat, saveChat } from '../coach/chat'
 import { askCoach, CoachFailure } from '../coach/client'
 import {
   activeGoal,
@@ -13,6 +14,7 @@ import {
   daysOff,
   goalData,
   goalPhases,
+  lastWeekReview,
   loadExercises,
   loadPlan,
 } from '../db/repo'
@@ -34,7 +36,9 @@ import {
 } from '../lib/coach'
 import type { CoachMode, CoachTurn, ProposedNutrition, ProposedPlan } from '../lib/coachSchema'
 import { targetProgress } from '../lib/goals'
+import { REVIEW_PROMPT, reviewText } from '../lib/review'
 import { WEEKDAY_SHORT, shortDate, todayKey } from '../lib/schedule'
+import { dayLabel, sortDays } from '../lib/weeks'
 import { useConfirm } from '../state/confirm'
 import { syncNow, useSync } from '../sync'
 
@@ -60,22 +64,6 @@ const STARTERS: Record<CoachMode, string[]> = {
   goal: ['Build me a plan to the date', 'I can train Mon, Wed, Fri and Sat', 'Gym 4 days a week, 60 minutes', 'Lose fat but keep my strength'],
 }
 
-const storageKey = (key: string | undefined) => `gynnasium.coach.${key ?? 'new'}`
-function loadChat(planId: string | undefined): Entry[] {
-  try {
-    return JSON.parse(sessionStorage.getItem(storageKey(planId)) ?? '[]') as Entry[]
-  } catch {
-    return []
-  }
-}
-function saveChat(planId: string | undefined, entries: Entry[]) {
-  try {
-    sessionStorage.setItem(storageKey(planId), JSON.stringify(entries))
-  } catch {
-    // Storage unavailable: the chat just isn't kept if you leave the page.
-  }
-}
-
 /** What Claude said, as it's sent back on later turns: the message plus what became of any proposal. */
 function turnText(e: Entry): string {
   if (e.role === 'user' || !e.proposal) return e.text
@@ -97,13 +85,18 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
   const { planId } = useParams()
   const mode: CoachMode = forGoal ? 'goal' : planId ? 'edit' : 'build'
   const chatKey = forGoal ? 'goal' : planId
+  // Opened from last week's review: the review goes in the context, and its first message waits in the box.
+  const [params] = useSearchParams()
+  const fromReview = mode === 'edit' && params.get('from') === 'review'
   const navigate = useNavigate()
   const confirm = useConfirm()
   const settings = useSettings()
   const sync = useSync()
   const plan = useLiveQuery(async () => (planId ? ((await loadPlan(planId)) ?? null) : null), [planId])
-  const [entries, setEntries] = useState<Entry[]>(() => loadChat(chatKey))
-  const [draft, setDraft] = useState('')
+  const [entries, setEntries] = useState<Entry[]>(() => loadChat<Entry>(chatKey))
+  const [draft, setDraft] = useState(() =>
+    fromReview && !entries.some((e) => e.role === 'user' && e.text === REVIEW_PROMPT) ? REVIEW_PROMPT : '',
+  )
   const [thinking, setThinking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -145,6 +138,7 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
       if (planId && !detail) throw new CoachFailure('This plan no longer exists.')
       const training = trainingText(await coachTrainingSummary(planId), settings.units)
       let context = detail ? `${training}\n\n${planText(detail)}` : training
+      if (fromReview) context += `\n\n${reviewText(await lastWeekReview(), settings.units)}`
       const goal = forGoal ? await activeGoal() : null
       if (forGoal) {
         if (!goal) throw new CoachFailure('Set a goal first.')
@@ -228,6 +222,15 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
     void syncNow()
   }
 
+  const startOver = async () => {
+    if (!(await confirm({ title: 'Clear this chat?', message: 'Plans you’ve created are kept.', action: 'Clear chat' }))) return
+    abortRef.current?.abort()
+    setThinking(false)
+    setEntries([])
+    setDraft('')
+    setError(null)
+  }
+
   const submit = (e: FormEvent) => {
     e.preventDefault()
     void send(draft)
@@ -244,9 +247,16 @@ export default function CoachPage({ goal: forGoal = false }: { goal?: boolean })
   return (
     <>
       <header className="page-header">
-        <Link to={forGoal ? '/goal' : planId ? `/plans/${planId}` : '/plans'} className="back-link">
-          <ChevronLeft size={18} aria-hidden /> {forGoal ? 'Goal' : planId ? (plan?.plan.name ?? 'Plan') : 'Plans'}
-        </Link>
+        <div className="page-nav">
+          <Link to={forGoal ? '/goal' : planId ? `/plans/${planId}` : '/plans'} className="back-link">
+            <ChevronLeft size={18} aria-hidden /> {forGoal ? 'Goal' : planId ? (plan?.plan.name ?? 'Plan') : 'Plans'}
+          </Link>
+          {entries.length > 0 && (
+            <button className="back-link" onClick={() => void startOver()}>
+              <SquarePen size={18} aria-hidden /> New chat
+            </button>
+          )}
+        </div>
         <h1>{{ build: 'Build a plan', edit: 'Ask Claude', goal: 'Plan to your goal' }[mode]}</h1>
         <p className="muted">
           {
@@ -376,9 +386,12 @@ function ProposalCard({
         <>
           <h3>{proposal.plan.name}</h3>
           {proposal.plan.goal && <p className="muted small">{proposal.plan.goal}</p>}
-          {proposal.plan.days.map((d, i) => (
-            <div key={i} className="proposal-day">
-              <p className="section-label">{d.name}</p>
+          {sortDays(proposal.plan.days.map((d, order) => ({ ...d, week: d.week ?? undefined, order }))).map((d) => (
+            <div key={d.order} className="proposal-day">
+              <p className="section-label">
+                {dayLabel(d)}
+                {d.weekdays?.length ? ` · ${d.weekdays.map((w) => WEEKDAY_SHORT[w]).join(', ')}` : ''}
+              </p>
               <ul className="plain-list small">
                 {d.exercises.map((x, j) => (
                   <li key={j}>
