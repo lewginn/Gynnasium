@@ -60,6 +60,13 @@ The app lives on an iPhone. One dark theme, warm and quiet: near-black panels, c
 - A goal's phases are plans with `goalId`, `startsOn` and `endsOn`. A phase covering a date wins over the active plan; `syncActivePhase()` makes it the active plan on Today. Re-planning soft-deletes the old phases.
 - The coach's goal mode (`/goal/coach`) returns `goalPlan`; `checkGoalPlan()` clamps phases to today…target date, removes overlaps, and drops implausible food targets. Applied only on Apply, like any proposal.
 
+## Weekly review (src/lib/review.ts, src/components/LastWeek.tsx)
+- `weeklyReview()` covers the Monday–Sunday before this week, from Dexie only: workouts done vs planned (scheduled weekdays minus days off, else the rotation's `daysPerWeek`), working sets vs target sets for workouts from a plan day, PRs, stalled lifts, sets per primary muscle. Warm-ups never count.
+- Stalled = no better top set in the last 3 workouts up to that Sunday (top weight, then best set at it, then the total at it). Its note is `suggestNext()`'s, with the plan's target and rule, so it matches the workout. Progression off: not flagged.
+- Flags only muscles the week's plan trains with under 10 sets.
+- Shown at the top of Progress when last week had a plan or workouts; Today has one row under This week, Monday to Wednesday.
+- Ask Claude (coach configured, active plan) opens `/plans/:id/coach?from=review`: `reviewText()` joins the request context (never the cached system block) and `REVIEW_PROMPT` waits in the box. Nothing is sent until Send.
+
 ## Social (src/social/, src/lib/friends.ts, supabase/migrations/20261022090000_friends.sql + 20261024090000_social.sql)
 - Online-only, straight to Supabase (nothing in Dexie). Friendships are by email; accepting goes through `accept_friend()`.
 - Nobody gets RLS read access to another user's tables. Friends' data only comes out of the security-definer functions (`friend_list`, `friend_feed`, `friend_leaderboard`, `friend_profile`) as a summary, so sync can never pull a friend's rows. Keep it that way.

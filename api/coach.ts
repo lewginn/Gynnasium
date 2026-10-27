@@ -79,7 +79,7 @@ Change ops (fields an op doesn't use are null):
 - set_day_week: day, week (1 = week A, 2 = week B, null = every week)
 add_day also takes week.
 
-Alternating weeks: when someone wants week A and week B to differ, give every day a week (1 or 2). The app runs week A's days in order, then week B's, then repeats. Otherwise leave week null on every day.
+Alternating weeks: when someone wants week A and week B to differ, give every day a week (1 or 2). The app runs week A's days in order, then week B's, then repeats. Each week has as many days as they train in a week (4 days a week alternating = 4 days in week A and 4 in week B); a day that's the same in both weeks appears in each. Name days so they read well with the week shown next to them ("Push 1", not "Push 1 A"). Otherwise leave week null on every day.
 
 Writing the message:
 - Short and plain, like a good coach talking between sets. No markdown, headings or exclamation marks. Don't repeat the changes one by one: the app lists them.

@@ -12,6 +12,7 @@ import {
   finishedSessionStarts,
   goalData,
   goalPhases,
+  lastWeekReview,
   plansWithDays,
   syncActivePhase,
   workoutsByDate,
@@ -28,6 +29,7 @@ import { useSettings } from '../db/settings'
 import { unlockAudio } from '../lib/feedback'
 import { formatClock, formatDay, formatDuration, formatRest, formatTarget, formatWhen } from '../lib/format'
 import { PR_LABELS } from '../lib/prs'
+import { reviewHeadline, showReviewOnToday } from '../lib/review'
 import { bestSet, formatSet } from '../lib/summary'
 import type { Goal, Plan, SetLog } from '../lib/types'
 import { toDisplay } from '../lib/units'
@@ -92,6 +94,11 @@ export default function TodayPage() {
     const phase = (await goalPhases(goal.id)).find((p) => p.startsOn! <= today && today <= p.endsOn!)
     return { goal, phase, targets: goal.targets.slice(0, 2).map((t) => targetProgress(t, goal, data, today)) }
   }, [today])
+  // Monday to Wednesday, a way into last week's review on Progress.
+  const review = useLiveQuery(async () => {
+    const r = await lastWeekReview(today)
+    return showReviewOnToday(r, today) ? r : null
+  }, [today])
   const [previewDayId, setPreviewDayId] = useState<string | null>(null)
   const preview = plan?.days.find((d) => d.day.id === previewDayId)
 
@@ -126,7 +133,7 @@ export default function TodayPage() {
   const freshPR = latestPR && now - latestPR.set.completedAt! < PR_FRESH_MS ? latestPR : null
   // Render the page in one go once everything has loaded: cards appearing one by one push the
   // Start buttons around, and a tap aimed at one lands on another.
-  const loaded = [active, schedule, plan, recent, week, latestPR, goal].every((x) => x !== undefined)
+  const loaded = [active, schedule, plan, recent, week, latestPR, goal, review].every((x) => x !== undefined)
 
   return (
     <>
@@ -231,6 +238,20 @@ export default function TodayPage() {
               volume={toDisplay(week.volumeKg, settings.units)}
               units={settings.units}
             />
+          )}
+
+          {!active && review && (
+            <ul className="list" aria-label="Last week">
+              <li>
+                <Link to="/progress" className="list-row list-row-split">
+                  <span>
+                    <span className="list-title">Last week’s review</span>
+                    <span className="list-meta">{reviewHeadline(review)}</span>
+                  </span>
+                  <ChevronRight size={20} aria-hidden />
+                </Link>
+              </li>
+            </ul>
           )}
 
           {!active && goal && <GoalCard info={goal} today={today} />}
